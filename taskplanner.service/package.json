@@ -1,0 +1,27 @@
+{
+  "type": "module",
+  "name": "taskplanner-service",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "migrate": "node src/lib/db.js migrate",
+    "seed": "node src/lib/db.js seed"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "install": "^0.13.0",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^8.19.1",
+    "mysql2": "^3.15.2",
+    "npm": "^11.6.2",
+    "sequelize": "^6.37.7",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

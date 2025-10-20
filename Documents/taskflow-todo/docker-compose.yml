@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    container_name: backend_taskflow
+    ports:
+      - "5010:5010"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/taskflow
+      - NODE_ENV=development
+    depends_on:
+      - mongo
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  mongo:
+    image: mongo:6
+    container_name: mongo_taskflow
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

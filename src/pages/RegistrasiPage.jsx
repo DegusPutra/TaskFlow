@@ -1,98 +1,127 @@
-import React, { useState } from 'react'
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-const RegistrasiPage = ({ onNavigate, onShowNotification }) => {
+export default function RegisterPage() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  })
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    // Validasi sederhana
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-      onShowNotification('Semua kolom wajib diisi!', 'error')
-      return
-    }
-    if (formData.password !== formData.confirmPassword) {
-      onShowNotification('Password tidak cocok!', 'error')
-      return
+      alert("Semua kolom wajib diisi!");
+      return;
     }
 
-    // Simulasi sukses
-    onShowNotification('Registrasi berhasil! Silakan login.', 'success')
-    setTimeout(() => onNavigate('login'), 1200)
-  }
+    if (formData.password !== formData.confirmPassword) {
+      alert("Password dan konfirmasi password tidak cocok!");
+      return;
+    }
+
+    // Simpan data user ke localStorage
+    localStorage.setItem("userData", JSON.stringify(formData));
+
+    alert("Registrasi berhasil! Silakan login.");
+    navigate("/login");
+  };
 
   return (
-    <div className="page-container">
-      <div className="form-box">
-        {/* Logo */}
-        <h2 className="logo-text">
-          <span className="text-red">Task</span>
-          <span className="text-green">Flow</span>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 via-green-50 to-blue-200 px-4">
+      <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md border border-gray-100">
+        {/* Logo / Judul */}
+        <h2 className="text-center text-4xl font-extrabold mb-2">
+          <span className="text-red-500">Task</span>
+          <span className="text-green-600">Flow</span>
         </h2>
+        <p className="text-center text-gray-500 mb-6">Buat akun baru</p>
 
-        <form onSubmit={handleSubmit}>
-          <label>Nama Lengkap</label>
-          <input
-            type="text"
-            name="name"
-            placeholder="Masukkan nama lengkap"
-            value={formData.name}
-            onChange={handleChange}
-          />
+        {/* Form Registrasi */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Nama Lengkap
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Masukkan nama lengkap"
+              className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            />
+          </div>
 
-          <label>Alamat Email</label>
-          <input
-            type="email"
-            name="email"
-            placeholder="Masukkan email kamu"
-            value={formData.email}
-            onChange={handleChange}
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Alamat Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Masukkan email"
+              className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            />
+          </div>
 
-          <label>Password</label>
-          <input
-            type="password"
-            name="password"
-            placeholder="Masukkan password"
-            value={formData.password}
-            onChange={handleChange}
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Masukkan password"
+              className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            />
+          </div>
 
-          <label>Konfirmasi Password</label>
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Ulangi password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Konfirmasi Password
+            </label>
+            <input
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              placeholder="Ulangi password"
+              className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            />
+          </div>
 
-          <button type="submit">Daftar</button>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition duration-200"
+          >
+            Daftar
+          </button>
         </form>
 
         {/* Link ke halaman login */}
-        <div className="account-link">
-          <span>Sudah punya akun?</span>
+        <div className="text-center mt-4 text-sm">
+          Sudah punya akun?{" "}
           <button
-            className="link-text"
-            onClick={() => onNavigate('login')}
+            onClick={() => navigate("/login")}
+            className="text-blue-600 hover:underline font-medium"
           >
             Login di sini
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }
-
-export default RegistrasiPage

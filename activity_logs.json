@@ -1,0 +1,44 @@
+[
+  {
+    "message": "Sarah added a new task 'Design Homepage'",
+    "icon": "task",
+    "date": "2025-01-25T00:00:00.000Z",
+    "user": "Sarah"
+  },
+  {
+    "message": "Michael updated the task 'Fix login bug'",
+    "icon": "edit",
+    "date": "2025-02-05T00:00:00.000Z",
+    "user": "Michael"
+  },
+  {
+    "message": "Emily completed the task 'Write documentation'",
+    "icon": "check",
+    "date": "2025-03-10T00:00:00.000Z",
+    "user": "Emily"
+  },
+  {
+    "message": "Sarah reopened the task 'Design Homepage'",
+    "icon": "refresh",
+    "date": "2025-04-01T00:00:00.000Z",
+    "user": "Sarah"
+  },
+  {
+    "message": "Michael deleted the task 'Old test case'",
+    "icon": "trash",
+    "date": "2025-04-12T00:00:00.000Z",
+    "user": "Michael"
+  },
+  {
+    "message": "Emily added a new project 'Marketing Website'",
+    "icon": "project",
+    "date": "2025-05-15T00:00:00.000Z",
+    "user": "Emily"
+  },
+  {
+    "message": "Sarah added a new task 'Create Hero Section'",
+    "icon": "task",
+    "date": "2025-06-18T00:00:00.000Z",
+    "user": "Sarah"
+  }
+]

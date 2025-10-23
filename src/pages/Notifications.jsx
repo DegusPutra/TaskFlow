@@ -1,55 +1,37 @@
-import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import React from "react";
+import { useNotifications } from "../context/NotificationContext";
 
 export default function Notifications() {
-  const navigate = useNavigate();
-  const [notifications, setNotifications] = useState([]);
-
-  useEffect(() => {
-    // Ambil data dari localStorage (planner dan todo)
-    const tasks = JSON.parse(localStorage.getItem("plannerTasks") || "[]");
-    const todos = JSON.parse(localStorage.getItem("todoList") || "[]");
-
-    // Buat list notifikasi sederhana
-    const combined = [
-      ...tasks.map(t => ({
-        type: "Project",
-        message: `${t.title} (Deadline: ${t.deadline})`,
-      })),
-      ...todos.map(t => ({
-        type: "To-Do",
-        message: t.text || t.title,
-      })),
-    ];
-
-    setNotifications(combined);
-  }, []);
+  const { notifications, clearNotifications } = useNotifications();
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="text-gray-600 text-2xl font-bold hover:text-gray-800"
-        >
-          ←
-        </button>
-        <h1 className="text-3xl font-bold text-gray-800">Notifications</h1>
-      </div>
+    <div className="min-h-screen bg-gray-50 p-8">
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Notifikasi</h1>
 
       {notifications.length === 0 ? (
-        <p className="text-gray-500 text-center mt-10">No notifications yet.</p>
+        <p className="text-gray-500 text-center">Tidak ada notifikasi.</p>
       ) : (
-        <div className="space-y-3">
-          {notifications.map((n, i) => (
+        <div className="space-y-4">
+          {notifications.map((n) => (
             <div
-              key={i}
-              className="p-4 bg-white rounded-lg shadow flex items-center justify-between"
+              key={n.id}
+              className={`p-4 rounded shadow ${
+                n.type === "success" ? "bg-green-100 text-green-800" :
+                n.type === "error" ? "bg-red-100 text-red-800" :
+                "bg-blue-100 text-blue-800"
+              }`}
             >
-              <span className="text-gray-800">{n.message}</span>
-              <span className="text-sm text-gray-500">{n.type}</span>
+              <p>{n.message}</p>
+              <small className="text-gray-500">{n.time}</small>
             </div>
           ))}
+
+          <button
+            onClick={clearNotifications}
+            className="mt-6 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          >
+            Hapus Semua
+          </button>
         </div>
       )}
     </div>

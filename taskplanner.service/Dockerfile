@@ -7,18 +7,17 @@ WORKDIR /app
 # Salin file konfigurasi package.json dan package-lock.json terlebih dahulu
 COPY package*.json ./
 
-# Install dependencies (tidak hanya production agar bisa digunakan juga saat build dev)
+# Install dependencies
 RUN npm install
 
 # Salin semua source code ke dalam container
 COPY . .
 
-# Set environment variable (default PORT = 5005)
-ENV NODE_ENV=production
+# Set environment variable default
 ENV PORT=5005
 
 # Buka port backend
 EXPOSE 5005
 
-# Jalankan server (pastikan file utamamu adalah server.js)
-CMD ["node", "server.js"]
+# Command default (bisa di-override oleh docker-compose)
+CMD ["npm", "start"]

@@ -1,11 +1,8 @@
 {
   "type": "module",
-  "name": "taskplanner-service",
-  "version": "1.0.0",
-  "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "node server.js",
+    "dev": "nodemon server.js",
     "migrate": "node src/lib/db.js migrate",
     "seed": "node src/lib/db.js seed"
   },

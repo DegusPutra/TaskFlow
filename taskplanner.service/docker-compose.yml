@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  taskplanner-service:
+    build: .
+    container_name: taskplanner-service
+    command: npm run dev
+    working_dir: /app
+    ports:
+      - "5005:5005"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:6.0
+    container_name: mongo-taskplanner
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

@@ -7,6 +7,7 @@ import users from "./users.js";
 
 const router = express.Router();
 
+//semua router dijalankan disini
 router.use("/projects", projects);
 router.use("/invites", invites);
 router.use("/tasks", tasks);

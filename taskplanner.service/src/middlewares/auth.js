@@ -16,13 +16,11 @@ export default async function auth(req, res, next) {
       process.env.NODE_ENV === "development" ||
       process.env.DEV_IGNORE_AUTH === "true";
 
-    // 🧩 Jika mode development, lewati auth
     if (isDev) {
       req.user = { id: "dev-1", email: "dev@example.com", name: "Developer" };
       return next();
     }
 
-    // 🔒 Mode production: validasi JWT
     const authHeader = req.headers.authorization || "";
     const token = authHeader.split(" ")[1] || null;
 
@@ -30,7 +28,6 @@ export default async function auth(req, res, next) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // Verifikasi JWT menggunakan JWT_SECRET
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const authUid = payload.sub || payload.user_id || payload.uid;
     const email = payload.email || null;

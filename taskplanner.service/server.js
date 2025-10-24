@@ -5,11 +5,16 @@ import routes from "./src/routes/index.js";
 
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 5005;
+
+app.use(cors({
+  origin: "http://localhost:5173", 
+  credentials: true,
+}));
 
 app.use(express.json());
 app.use("/api", routes);
 
-connectDB();
+const PORT = process.env.PORT || 5005;
 
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+connectDB();

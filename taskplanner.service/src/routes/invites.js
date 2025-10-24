@@ -1,10 +1,9 @@
 import express from "express";
-import auth from "../middlewares/auth.js";
-import * as ctrl from "../controllers/invitesController.js";
+import { createInvite, getInvites } from "../controllers/invitesController.js";
 
 const router = express.Router();
 
-router.post("/:id", auth, ctrl.createInvite);
-router.post("/accept", auth, ctrl.acceptInvite);
+router.post("/", createInvite);
+router.get("/:projectId/invite", getInvites);
 
 export default router;

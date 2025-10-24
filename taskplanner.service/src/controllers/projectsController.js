@@ -53,15 +53,16 @@ export const getProject = async (req, res) => {
 // PUT update project
 export const updateProject = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, deadline } = req.body; // ✅ tambahkan deadline
+
     const project = await Project.findByIdAndUpdate(
       req.params.id,
-      { name, description },
+      { name, description, deadline, updatedAt: Date.now() }, // ✅ ikut disimpan
       { new: true }
     );
 
     if (!project) return res.status(404).json({ error: "Project not found" });
-    res.json({ message: "Project updated successfully", project });
+    res.json(project); // ✅ kirim data project langsung (tidak perlu bungkus message)
   } catch (err) {
     console.error("❌ Error updateProject:", err);
     res.status(500).json({ error: err.message });

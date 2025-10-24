@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.use("/projects", projects);
 router.use("/invites", invites);
-router.use("/tasks", tasks); 
+router.use("/tasks", tasks);
 router.use("/columns", columns);
 router.use("/users", users);
 

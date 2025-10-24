@@ -1,110 +1,44 @@
-import Invite from "../models/invite.js";
+// src/controllers/invitesController.js
 import Project from "../models/project.js";
-import ProjectMember from "../models/projectMember.js";
-import User from "../models/user.js";
-import { v4 as uuidv4 } from "uuid";
 
-/**
- * Membuat link undangan untuk project
- */
-export async function createInvite(req, res) {
+export const createInvite = async (req, res) => {
   try {
-    const projectId = req.params.id;
-    const { role = "viewer", expiresInHours } = req.body;
+    const { projectId, role } = req.body;
 
-    if (!projectId) {
-      return res.status(400).json({ error: "Project ID wajib disertakan" });
+    if (!projectId || !role) {
+      return res.status(400).json({ message: "Project ID dan role harus diisi" });
     }
 
-    const membership = await ProjectMember.findOne({
-      projectId,
-      userId: req.user.id,
-    });
-
-    if (!membership || !["admin", "editor"].includes(membership.role)) {
-      return res.status(403).json({ error: "Akses ditolak" });
+    if (!["editor", "viewer"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role" });
     }
 
-    const token = uuidv4().replace(/-/g, "");
-    const expiresAt = expiresInHours
-      ? new Date(Date.now() + expiresInHours * 3600 * 1000)
-      : null;
+    // ✅ generate link acak
+    const randomCode = Math.random().toString(36).substring(2, 10);
+    const inviteLink = `https://taskflow-${randomCode}.vercel.app/open-project/${projectId}?role=${role}`;
 
-    const invite = new Invite({
-      projectId,
-      token,
-      role,
-      expiresAt,
-      createdBy: req.user.id,
-      used: false,
-    });
-    await invite.save();
-
-    const baseUrl = req.headers.origin || `http://localhost:${process.env.PORT || 5005}`;
-    const inviteLink = `${baseUrl}/invite/${invite.token}`;
-
-    res.status(201).json({
-      message: "Undangan berhasil dibuat",
-      inviteLink,
-      token: invite.token,
-      expiresAt,
-    });
+    res.status(201).json({ inviteLink });
   } catch (err) {
-    console.error("❌ Error createInvite:", err);
-    res.status(500).json({ error: err.message });
+    console.error("❌ Error in createInvite:", err);
+    res.status(500).json({ message: "Server error" });
   }
-}
+};
 
-/**
- * Menerima undangan project
- */
-export async function acceptInvite(req, res) {
+// Ambil semua link undangan untuk project tertentu
+export const getInvites = async (req, res) => {
   try {
-    const { token } = req.body;
+    const { projectId } = req.params;
 
-    if (!token) {
-      return res.status(400).json({ error: "Token undangan wajib disertakan" });
-    }
-
-    const invite = await Invite.findOne({ token });
-    if (!invite) return res.status(404).json({ error: "Undangan tidak ditemukan" });
-    if (invite.used) return res.status(400).json({ error: "Undangan sudah digunakan" });
-    if (invite.expiresAt && new Date() > invite.expiresAt) {
-      return res.status(400).json({ error: "Undangan sudah kedaluwarsa" });
-    }
-
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: "User tidak ditemukan" });
-
-    let membership = await ProjectMember.findOne({
-      projectId: invite.projectId,
-      userId: user._id,
-    });
-
-    if (!membership) {
-      membership = new ProjectMember({
-        projectId: invite.projectId,
-        userId: user._id,
-        role: invite.role,
-        addedBy: req.user.id,
-      });
-      await membership.save();
-    } else if (membership.role !== invite.role) {
-      membership.role = invite.role;
-      await membership.save();
-    }
-
-    invite.used = true;
-    await invite.save();
+    // generate base domain acak
+    const randomCode = Math.random().toString(36).substring(2, 10);
+    const base = `https://taskflow-${randomCode}.vercel.app/open-project`;
 
     res.json({
-      success: true,
-      message: "Undangan berhasil diterima",
-      projectId: invite.projectId,
-      role: invite.role,
+      editor: `${base}/${projectId}?role=editor`,
+      viewer: `${base}/${projectId}?role=viewer`,
     });
   } catch (err) {
-    console.error("❌ Error acceptInvite:", err);
-    res.status(500).json({ error: err.message });
+    console.error("❌ Error in getInvites:", err);
+    res.status(500).json({ message: "Server error" });
   }
-}
+};

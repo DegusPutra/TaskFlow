@@ -1,25 +1,40 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
 import "./index.css";
+import { UserProvider } from "./UserContext";
+import { NotificationProvider } from "./context/NotificationContext";
 
-// Komponen halaman
+// 🧩 Komponen halaman
 import Dashboard from "./pages/Dashboard.jsx";
 import OpenProject from "./pages/OpenProject.jsx";
 import TaskPlanner from "./pages/TaskPlanner.jsx";
 import ToDoList from "./pages/ToDoList.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
-import RegistrasiPage from "./pages/RegistrasiPage.jsx";
-import ProfilPage from "./pages/ProfilPage.jsx";
+import RegisterPage from "./pages/RegisterPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 
-// Navbar global
+// 🧭 Navbar global
 import Navbar from "./components/Navbar.jsx";
 
+/* -------------------- 🔒 Proteksi Halaman (Private Route) -------------------- */
+function PrivateRoute({ children }) {
+  const user = localStorage.getItem("userData");
+  return user ? children : <Navigate to="/login" replace />;
+}
+
+/* -------------------- 🌐 Router Utama Aplikasi -------------------- */
 function AppRouter() {
   const location = useLocation();
 
-  // Navbar hanya tampil kalau bukan login/register
+  // Navbar hanya tampil di luar halaman login & register
   const hideNavbar =
     location.pathname === "/login" || location.pathname === "/register";
 
@@ -28,32 +43,94 @@ function AppRouter() {
       {!hideNavbar && <Navbar />}
 
       <Routes>
-        {/* 🔐 Auth */}
+        {/* 🔐 Halaman Autentikasi */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegistrasiPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
         {/* 👤 Profil */}
-        <Route path="/profile" element={<ProfilPage />} />
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <ProfilePage />
+            </PrivateRoute>
+          }
+        />
 
-        {/* 📊 App Routes */}
-        <Route path="/" element={<LoginPage />} /> {/* 👈 Default ke login */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/taskplanner" element={<TaskPlanner />} />
-        <Route path="/open-project/:id" element={<OpenProject />} />
-        <Route path="/todolist" element={<ToDoList />} />
-        <Route path="/notifications" element={<Notifications />} />
+        {/* 📊 Halaman Aplikasi */}
+        <Route
+          path="/"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/taskplanner"
+          element={
+            <PrivateRoute>
+              <TaskPlanner />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/open-project/:id"
+          element={
+            <PrivateRoute>
+              <OpenProject />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/todolist"
+          element={
+            <PrivateRoute>
+              <ToDoList />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <PrivateRoute>
+              <Notifications />
+            </PrivateRoute>
+          }
+        />
 
-        {/* fallback */}
-        <Route path="*" element={<LoginPage />} />
+        {/* 🧭 Fallback jika route tidak ditemukan */}
+        <Route
+          path="*"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        />
       </Routes>
     </>
   );
 }
 
+/* -------------------- 🧠 Render Root -------------------- */
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <AppRouter />
+      {/* 🔽 Context Global (tidak ubah tampilan, hanya logika) */}
+      <UserProvider>
+        <NotificationProvider>
+          <AppRouter />
+        </NotificationProvider>
+      </UserProvider>
     </BrowserRouter>
   </StrictMode>
 );

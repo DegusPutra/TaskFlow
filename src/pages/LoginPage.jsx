@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiAuth } from "../api/axios";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -10,51 +11,45 @@ export default function LoginPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const savedUser = JSON.parse(localStorage.getItem("userData"));
+    try {
+      const res = await apiAuth.post("/auth/login", formData);
+      alert(`Selamat datang, ${res.data.name}!`);
 
-    if (!savedUser) {
-      alert("Belum ada akun terdaftar. Silakan daftar terlebih dahulu.");
-      navigate("/register");
-      return;
-    }
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("userData", JSON.stringify(res.data));
 
-    if (
-      formData.email === savedUser.email &&
-      formData.password === savedUser.password
-    ) {
-      alert(`Selamat datang kembali, ${savedUser.name}!`);
       navigate("/dashboard");
-    } else {
-      alert("Email atau password salah!");
+    } catch (error) {
+      alert(error.response?.data?.message || "Email atau password salah!");
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 via-green-50 to-blue-200 px-4">
-      <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md border border-gray-100">
-        {/* Logo / Judul */}
-        <h2 className="text-center text-4xl font-extrabold mb-2">
-          <span className="text-red-500">Task</span>
-          <span className="text-green-600">Flow</span>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-blue-300">
+      <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
+        <h2 className="text-3xl font-bold text-center text-blue-700 mb-2">
+          Welcome to
         </h2>
-        <p className="text-center text-gray-500 mb-6">Masuk ke akun kamu</p>
+        <h1 className="text-4xl font-extrabold text-center mb-6">
+          <span className="text-red-600">Task</span>
+          <span className="text-green-600">Flow</span>
+        </h1>
 
-        {/* Form Login */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Alamat Email
+              Email
             </label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="Masukkan email kamu"
-              className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              placeholder="Masukkan email"
+              className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
@@ -68,24 +63,23 @@ export default function LoginPage() {
               value={formData.password}
               onChange={handleChange}
               placeholder="Masukkan password"
-              className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition duration-200"
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
           >
             Masuk
           </button>
         </form>
 
-        {/* Link ke halaman registrasi */}
         <div className="text-center mt-4 text-sm">
           Belum punya akun?{" "}
           <button
             onClick={() => navigate("/register")}
-            className="text-blue-600 hover:underline font-medium"
+            className="text-blue-600 hover:underline"
           >
             Daftar di sini
           </button>

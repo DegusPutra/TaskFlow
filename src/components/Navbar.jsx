@@ -2,10 +2,13 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiMenu, FiX } from "react-icons/fi";
 import { FaUserCircle } from "react-icons/fa";
+import { useNotifications } from "../context/NotificationContext";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const { notifications } = useNotifications(); // 🔔 Ambil data dari Context
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -13,10 +16,20 @@ export default function Navbar() {
     if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
+  // 🔄 Update jumlah notifikasi belum dibaca secara realtime
+  useEffect(() => {
+    const unread = notifications.filter((n) => !n.read).length;
+    setUnreadCount(unread);
+  }, [notifications]);
+
   const handleLogout = () => {
     localStorage.removeItem("userData");
     setUser(null);
     navigate("/login");
+  };
+
+  const handleViewNotifications = () => {
+    navigate("/notifications");
   };
 
   return (
@@ -65,18 +78,25 @@ export default function Navbar() {
             onClick={() => setMenuOpen(false)}
             className="hover:text-gray-300"
           >
-            To-Do-List
+            To-Do List
           </Link>
 
-          <Link
-            to="/notifications"
-            onClick={() => setMenuOpen(false)}
-            className="hover:text-gray-300"
-          >
-            🔔
-          </Link>
+          {/* 🔔 Notifikasi dengan angka */}
+          <div className="relative">
+            <button
+              onClick={handleViewNotifications}
+              className="hover:text-gray-300 text-2xl relative"
+            >
+              🔔
+              {unreadCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
 
-          {/* 👤 Profil & Logout */}
+          {/* Profil & Logout */}
           {user ? (
             <div className="relative group">
               <div className="flex items-center gap-2 cursor-pointer">

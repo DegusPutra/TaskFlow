@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -15,37 +16,31 @@ export default function RegisterPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-      alert("Semua kolom wajib diisi!");
-      return;
+    try {
+      const res = await api.post("/auth/register", formData);
+      alert("Registrasi berhasil!");
+      console.log("Register response:", res.data);
+
+      // Simpan token & data user
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("userData", JSON.stringify(res.data));
+
+      navigate("/login");
+    } catch (error) {
+      alert(error.response?.data?.message || "Gagal registrasi");
     }
-
-    if (formData.password !== formData.confirmPassword) {
-      alert("Password dan konfirmasi password tidak cocok!");
-      return;
-    }
-
-    // Simpan data user ke localStorage
-    localStorage.setItem("userData", JSON.stringify(formData));
-
-    alert("Registrasi berhasil! Silakan login.");
-    navigate("/login");
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 via-green-50 to-blue-200 px-4">
-      <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md border border-gray-100">
-        {/* Logo / Judul */}
-        <h2 className="text-center text-4xl font-extrabold mb-2">
-          <span className="text-red-500">Task</span>
-          <span className="text-green-600">Flow</span>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-blue-300">
+      <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md">
+        <h2 className="text-3xl font-bold text-center text-blue-700 mb-6">
+          Daftar Akun
         </h2>
-        <p className="text-center text-gray-500 mb-6">Buat akun baru</p>
 
-        {/* Form Registrasi */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -57,13 +52,13 @@ export default function RegisterPage() {
               value={formData.name}
               onChange={handleChange}
               placeholder="Masukkan nama lengkap"
-              className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Alamat Email
+              Email
             </label>
             <input
               type="email"
@@ -71,7 +66,7 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={handleChange}
               placeholder="Masukkan email"
-              className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
@@ -85,7 +80,7 @@ export default function RegisterPage() {
               value={formData.password}
               onChange={handleChange}
               placeholder="Masukkan password"
-              className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
@@ -99,24 +94,23 @@ export default function RegisterPage() {
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="Ulangi password"
-              className="w-full border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition duration-200"
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
           >
             Daftar
           </button>
         </form>
 
-        {/* Link ke halaman login */}
         <div className="text-center mt-4 text-sm">
           Sudah punya akun?{" "}
           <button
             onClick={() => navigate("/login")}
-            className="text-blue-600 hover:underline font-medium"
+            className="text-blue-600 hover:underline"
           >
             Login di sini
           </button>

@@ -17,7 +17,7 @@ export default async function auth(req, res, next) {
       process.env.DEV_IGNORE_AUTH === "true";
 
     if (isDev) {
-      req.user = { id: "dev-1", email: "dev@example.com", name: "Developer" };
+      req.user = { id: '6719fddf1b9f2b6c13e45678', email: 'dev@example.com', name: 'Developer' };
       return next();
     }
 

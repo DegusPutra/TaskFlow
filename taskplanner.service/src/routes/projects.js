@@ -1,6 +1,7 @@
 import express from "express";
 import * as projectCtrl from "../controllers/projectsController.js";
 import * as inviteCtrl from "../controllers/invitesController.js";
+import * as taskCtrl from "../controllers/tasksController.js";
 import auth from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -17,5 +18,8 @@ router.delete("/:id", projectCtrl.deleteProject);
 
 // Invite anggota ke project
 router.post("/:id/invite", inviteCtrl.createInvite);
+
+router.post("/:projectId/tasks", taskCtrl.createTask);
+router.get("/:projectId/tasks", taskCtrl.getTasksByProject);
 
 export default router;

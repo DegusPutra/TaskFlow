@@ -3,7 +3,7 @@ import Project from "../models/project.js";
 // GET semua project milik user
 export const getProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ ownerId: req.user.id });
+    const projects = await Project.find({ createdBy: req.user.id });
     res.json(projects);
   } catch (err) {
     console.error("❌ Error getProjects:", err);
@@ -14,12 +14,20 @@ export const getProjects = async (req, res) => {
 // POST buat project baru
 export const createProject = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    console.log("📥 Request body:", req.body);
+    console.log("👤 User:", req.user);
+
+    const { name, description, deadline } = req.body;
+
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: "Unauthorized: user not found" });
+    }
 
     const project = new Project({
       name,
       description,
-      ownerId: req.user.id,
+      createdBy: req.user.id,
+      deadline,
     });
 
     await project.save();

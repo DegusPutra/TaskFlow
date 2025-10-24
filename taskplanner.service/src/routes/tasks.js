@@ -1,26 +1,17 @@
 import express from "express";
-import auth from "../middlewares/auth.js";
 import {
-  getTasks,
-  getTask,
   createTask,
   updateTask,
   deleteTask,
-  listTasks
+  getTasksByProject,
 } from "../controllers/tasksController.js";
+import * as taskCtrl from "../controllers/tasksController.js";
 
 const router = express.Router();
 
-router.use(auth);
-
-// Rute spesifik harus di atas
-router.get("/project/:projectId", listTasks);
-
-// CRUD Task
-router.get("/", getTasks);
-router.get("/:id", getTask);
-router.post("/", createTask);
-router.put("/:id", updateTask);
-router.delete("/:id", deleteTask);
+router.get("/projects/:projectId/tasks", getTasksByProject);
+router.post("/projects/:projectId/tasks", createTask);
+router.put("/:id", taskCtrl.updateTask);     // ✅ update status atau data task
+router.delete("/:id", taskCtrl.deleteTask);
 
 export default router;

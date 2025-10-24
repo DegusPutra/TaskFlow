@@ -1,81 +1,65 @@
 import Task from "../models/task.js";
 
-/**
- * GET semua task
- */
-export async function getTasks(req, res) {
+// Ambil semua task untuk project tertentu
+export const getTasksByProject = async (req, res) => {
   try {
-    const tasks = await Task.find();
+    const { projectId } = req.params;
+    const tasks = await Task.find({ project: projectId });
     res.json(tasks);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Error getTasksByProject:", err);
+    res.status(500).json({ message: err.message });
   }
-}
+};
 
-/**
- * GET satu task berdasarkan ID
- */
-export async function getTask(req, res) {
+// Buat task baru untuk project
+export const createTask = async (req, res) => {
   try {
-    const { id } = req.params;
-    const task = await Task.findById(id);
-    if (!task) return res.status(404).json({ error: "Task not found" });
-    res.json(task);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-}
+    const { title, deadline, members = 0, status = "todo" } = req.body;
+    const { projectId } = req.params;
 
-/**
- * POST buat task baru
- */
-export async function createTask(req, res) {
-  try {
-    const task = new Task(req.body);
+    if (!title) return res.status(400).json({ message: "Title wajib diisi" });
+
+    const task = new Task({
+      title,
+      deadline: deadline || null,
+      members: Number(members) || 0,
+      status: ["todo", "inprogress", "done"].includes(status)
+        ? status
+        : "todo",
+      project: projectId,
+    });
+
     await task.save();
     res.status(201).json(task);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Error createTask:", err);
+    res.status(500).json({ message: err.message });
   }
-}
+};
 
-/**
- * PUT update task
- */
-export async function updateTask(req, res) {
+// Update task (ubah status dari drag & drop)
+export const updateTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await Task.findByIdAndUpdate(id, req.body, { new: true });
-    if (!updated) return res.status(404).json({ error: "Task not found" });
-    res.json(updated);
+    const updatedTask = await Task.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
+    res.json(updatedTask);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("❌ Error updateTask:", err);
+    res.status(500).json({ message: err.message });
   }
-}
+};
 
-/**
- * DELETE task
- */
-export async function deleteTask(req, res) {
+// Hapus task
+export const deleteTask = async (req, res) => {
   try {
     const { id } = req.params;
     const deleted = await Task.findByIdAndDelete(id);
-    if (!deleted) return res.status(404).json({ error: "Task not found" });
+    if (!deleted) return res.status(404).json({ message: "Task not found" });
     res.json({ message: "Task deleted successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
-}
-
-/**
- * GET semua task berdasarkan projectId
- */
-export async function listTasks(req, res) {
-  try {
-    const { projectId } = req.params;
-    const tasks = await Task.find({ projectId });
-    res.json(tasks);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-}
+};

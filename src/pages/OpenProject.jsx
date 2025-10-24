@@ -1,205 +1,365 @@
 // src/pages/OpenProject.jsx
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { FiEdit2, FiTrash2, FiCheckCircle } from "react-icons/fi";
-
-const TASK_API = "http://localhost:5005/api/tasks";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { apiTask } from "../api/axios";
 
 export default function OpenProject() {
-  const { state } = useLocation();
-  const project = state?.project;
-  const [tasks, setTasks] = useState([]);
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const location = useLocation();
+  const projectFromState = location.state?.project || null;
+
+  const [project, setProject] = useState(
+    projectFromState || { id, name: "Project", description: "" }
+  );
+  const [tasks, setTasks] = useState({ todo: [], inprogress: [], done: [] });
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
   const [newTask, setNewTask] = useState({
     title: "",
-    description: "",
-    priority: "Low",
-    dueDate: "",
+    deadline: "",
+    members: 1,
+    status: "todo",
   });
-  const [notification, setNotification] = useState(null);
+  const [role, setRole] = useState("editor"); // bisa editor / viewer
 
-  const showNotification = (msg, type = "success") => {
-    setNotification({ msg, type });
-    setTimeout(() => setNotification(null), 2500);
-  };
-
-  // ✅ Ambil task dari MongoDB
+  // 🔹 Ambil semua task berdasarkan project ID
   useEffect(() => {
-    if (project?._id) {
-      fetch(`${TASK_API}/${project._id}`)
-        .then((res) => res.json())
-        .then((data) => setTasks(data))
-        .catch(() => showNotification("Gagal memuat task!", "error"));
-    }
-  }, [project]);
+    const fetchTasks = async () => {
+      try {
+        const res = await apiTask.get(`/projects/${id}/tasks`);
+        const grouped = { todo: [], inprogress: [], done: [] };
 
+        res.data.forEach((t) => {
+          grouped[t.status || "todo"].push(t);
+        });
+
+        setTasks(grouped);
+      } catch (err) {
+        console.error("❌ Gagal memuat tasks:", err);
+      }
+    };
+
+    fetchTasks();
+  }, [id]);
+
+  // 🔹 Handle perubahan input
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNewTask((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ✅ Simpan atau edit task
-  const handleSaveTask = async () => {
-    if (!newTask.title || !newTask.description || !newTask.dueDate) {
-      return showNotification("Lengkapi semua kolom!", "error");
+  // 🔹 Simpan (Tambah / Edit)
+  const saveTask = async () => {
+    if (!newTask.title || !newTask.deadline) {
+      return alert("Isi semua kolom sebelum menyimpan!");
     }
 
+    const membersArray = Array.from(
+      { length: Number(newTask.members) },
+      (_, i) => `Member ${i + 1}`
+    );
+
+    const taskData = {
+      title: newTask.title,
+      deadline: newTask.deadline,
+      members: membersArray,
+      status: newTask.status || "todo",
+      project: id, // penting: kaitkan task dengan project
+    };
+
     try {
-      if (editId) {
-        const res = await fetch(`${TASK_API}/${editId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newTask),
+      if (editingTask) {
+        // 🟢 UPDATE TASK
+        const res = await apiTask.put(`/tasks/${editingTask._id}`, taskData);
+
+        setTasks((prev) => {
+          const updated = { ...prev };
+          Object.keys(updated).forEach((col) => {
+            updated[col] = updated[col].map((t) =>
+              t._id === editingTask._id ? res.data : t
+            );
+          });
+          return updated;
         });
-        const updated = await res.json();
-        setTasks((prev) => prev.map((t) => (t._id === editId ? updated : t)));
-        showNotification("Task diperbarui ✅");
       } else {
-        const res = await fetch(TASK_API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...newTask, projectId: project._id }),
-        });
-        const added = await res.json();
-        setTasks((prev) => [added, ...prev]);
-        showNotification("Task ditambahkan 🎉");
+        // 🟢 CREATE TASK BARU
+        const res = await apiTask.post(`/projects/${id}/tasks`, taskData);
+        setTasks((prev) => ({
+          ...prev,
+          todo: [...prev.todo, res.data],
+        }));
       }
 
+      // Reset form
       setShowForm(false);
-      setNewTask({ title: "", description: "", priority: "Low", dueDate: "" });
-      setEditId(null);
-    } catch {
-      showNotification("Gagal menyimpan task!", "error");
+      setEditingTask(null);
+      setNewTask({ title: "", deadline: "", members: 1, status: "todo" });
+    } catch (err) {
+      console.error("❌ Gagal menyimpan task:", err);
+      alert("Gagal menyimpan task!");
     }
   };
 
-  const handleDeleteTask = async (id) => {
+  // 🔹 Edit Task
+  const handleEdit = (task) => {
+    if (role === "viewer") return;
+    setEditingTask(task);
+    setNewTask({
+      title: task.title,
+      // Format deadline agar cocok untuk input type="date"
+      deadline: task.deadline
+        ? new Date(task.deadline).toISOString().split("T")[0]
+        : "",
+      members: task.members?.length || 1,
+      status: task.status,
+    });
+    setShowForm(true);
+  };
+
+  // 🔹 Hapus Task
+  const handleDelete = async (taskId) => {
+    if (role === "viewer") return;
+    if (!window.confirm("Yakin ingin menghapus task ini?")) return;
+
     try {
-      await fetch(`${TASK_API}/${id}`, { method: "DELETE" });
-      setTasks((prev) => prev.filter((t) => t._id !== id));
-      showNotification("Task dihapus 🗑️", "error");
-    } catch {
-      showNotification("Gagal menghapus task!", "error");
+      await apiTask.delete(`/tasks/${taskId}`);
+      setTasks((prev) => {
+        const updated = {};
+        for (const col in prev) {
+          updated[col] = prev[col].filter((t) => t._id !== taskId);
+        }
+        return updated;
+      });
+    } catch (err) {
+      console.error("❌ Gagal menghapus task:", err);
+      alert("Gagal menghapus task!");
     }
   };
 
-  return (
-    <div className="min-h-screen p-6 bg-gray-50">
-      <h1 className="text-3xl font-bold mb-6 text-blue-700">
-        {project?.name || "No Project Selected"}
-      </h1>
+  // 🔹 Drag & Drop
+  const onDragEnd = async (result) => {
+    if (!result.destination) return;
+    if (role === "viewer") return;
 
-      {/* Daftar Task */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tasks.map((task) => (
-          <div key={task._id} className="bg-white p-4 rounded-xl shadow border relative">
-            <h3 className="font-semibold text-blue-700">{task.title}</h3>
-            <p className="text-sm text-gray-600">{task.description}</p>
-            <div className="text-xs mt-2 text-gray-500">
-              🗓️ {task.dueDate} | ⚙️ {task.priority}
-            </div>
-            <div className="absolute top-2 right-2 flex gap-2">
-              <button
-                onClick={() => {
-                  setEditId(task._id);
-                  setNewTask(task);
-                  setShowForm(true);
-                }}
-                className="p-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg"
-              >
-                <FiEdit2 />
-              </button>
-              <button
-                onClick={() => handleDeleteTask(task._id)}
-                className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg"
-              >
-                <FiTrash2 />
-              </button>
-            </div>
+    const { source, destination } = result;
+    const sourceCol = source.droppableId;
+    const destCol = destination.droppableId;
+
+    if (sourceCol === destCol && source.index === destination.index) return;
+
+    const item = tasks[sourceCol][source.index];
+
+    const newSource = Array.from(tasks[sourceCol]);
+    newSource.splice(source.index, 1);
+
+    const newDest = Array.from(tasks[destCol]);
+    newDest.splice(destination.index, 0, { ...item, status: destCol });
+
+    setTasks((prev) => ({
+      ...prev,
+      [sourceCol]: newSource,
+      [destCol]: newDest,
+    }));
+
+    try {
+      await apiTask.put(`/tasks/${item._id}`, { status: destCol });
+    } catch (err) {
+      console.error("❌ Gagal update status task:", err);
+    }
+  };
+
+  // 🔹 Share project link
+  const handleShare = async () => {
+    const link = `${window.location.origin}/open-project/${id}`;
+    await navigator.clipboard.writeText(link);
+    alert("🔗 Link project berhasil disalin!");
+  };
+
+  const columns = [
+    { id: "todo", title: "To Do", color: "bg-red-100" },
+    { id: "inprogress", title: "In Progress", color: "bg-yellow-100" },
+    { id: "done", title: "Done", color: "bg-green-100" },
+  ];
+
+  // 🟢 Tampilan utama
+  return (
+    <div className="min-h-screen p-6 bg-gradient-to-br from-blue-50 to-white relative">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/taskplanner")}
+            className="text-3xl font-bold text-blue-700 hover:text-blue-900 transition"
+          >
+            &lt;
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">{project.name}</h1>
+            <p className="text-sm text-gray-600">{project.description}</p>
           </div>
-        ))}
+        </div>
+
+        {/* Role selector + share */}
+        <div className="flex gap-3">
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="border rounded px-2 py-1 text-sm"
+          >
+            <option value="editor">👩‍💻 Editor</option>
+            <option value="viewer">👀 Viewer</option>
+          </select>
+
+          <button
+            onClick={handleShare}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            🔗 Share
+          </button>
+        </div>
       </div>
 
-      {/* Tombol Tambah Task */}
-      <button
-        onClick={() => {
-          setShowForm(true);
-          setEditId(null);
-          setNewTask({ title: "", description: "", priority: "Low", dueDate: "" });
-        }}
-        className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white text-3xl font-bold px-6 py-4 rounded-full shadow-lg transition-all"
-      >
-        +
-      </button>
+      {/* Kolom Drag & Drop */}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {columns.map((col) => (
+            <Droppable droppableId={col.id} key={col.id}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className={`${col.color} p-4 rounded-xl shadow min-h-[350px] transition`}
+                >
+                  <h3 className="font-semibold mb-3 text-lg text-gray-800">
+                    {col.title}
+                  </h3>
 
-      {/* Form Tambah/Edit */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-xl w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-3 text-blue-700">
-              {editId ? "Edit Task" : "Add Task"}
+                  {tasks[col.id].map((t, idx) => (
+                    <Draggable draggableId={t._id} index={idx} key={t._id}>
+                      {(prov) => (
+                        <div
+                          ref={prov.innerRef}
+                          {...prov.draggableProps}
+                          {...prov.dragHandleProps}
+                          className="bg-white p-3 rounded-lg mb-3 shadow-sm border border-gray-200 hover:shadow-md transition relative"
+                        >
+                          <div className="font-medium text-gray-800">
+                            {t.title}
+                          </div>
+
+                          {/* 🟢 Tampilkan deadline dengan format lokal */}
+                          <div className="text-xs text-gray-500 mt-1">
+                            🗓️ Deadline:{" "}
+                            {t.deadline
+                              ? new Date(t.deadline).toLocaleDateString("id-ID", {
+                                  day: "2-digit",
+                                  month: "long",
+                                  year: "numeric",
+                                })
+                              : "-"}
+                          </div>
+
+                          <div className="text-xs text-gray-500">
+                            👥 Members: {t.members?.length || 0}
+                          </div>
+
+                          {role === "editor" && (
+                            <div className="absolute top-2 right-2 flex gap-2">
+                              <button
+                                onClick={() => handleEdit(t)}
+                                className="text-blue-600 hover:text-blue-800 text-sm"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => handleDelete(t._id)}
+                                className="text-red-500 hover:text-red-700 text-sm"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          ))}
+        </div>
+      </DragDropContext>
+
+      {/* Tombol Tambah */}
+      {role === "editor" && (
+        <button
+          onClick={() => {
+            setShowForm(true);
+            setEditingTask(null);
+            setNewTask({ title: "", deadline: "", members: 1, status: "todo" });
+          }}
+          className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white text-3xl font-bold px-6 py-4 rounded-full shadow-lg transition-all"
+        >
+          +
+        </button>
+      )}
+
+      {/* Modal Add/Edit */}
+      {showForm && role === "editor" && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4 text-blue-700">
+              {editingTask ? "Edit Task" : "Add New Task"}
             </h2>
 
+            <label className="text-sm font-medium text-gray-700">Task Title</label>
             <input
               name="title"
-              placeholder="Task Title"
+              type="text"
               value={newTask.title}
               onChange={handleChange}
-              className="w-full border p-2 rounded mb-3"
+              className="w-full border p-2 rounded mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              placeholder="Enter task name"
             />
-            <textarea
-              name="description"
-              placeholder="Description"
-              value={newTask.description}
-              onChange={handleChange}
-              className="w-full border p-2 rounded mb-3"
-            />
-            <select
-              name="priority"
-              value={newTask.priority}
-              onChange={handleChange}
-              className="w-full border p-2 rounded mb-3"
-            >
-              <option>Low</option>
-              <option>Medium</option>
-              <option>High</option>
-            </select>
+
+            <label className="text-sm font-medium text-gray-700">Deadline</label>
             <input
+              name="deadline"
               type="date"
-              name="dueDate"
-              value={newTask.dueDate}
+              value={newTask.deadline}
               onChange={handleChange}
-              className="w-full border p-2 rounded mb-4"
+              className="w-full border p-2 rounded mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            />
+
+            <label className="text-sm font-medium text-gray-700">Members</label>
+            <input
+              name="members"
+              type="number"
+              min="1"
+              value={newTask.members}
+              onChange={handleChange}
+              className="w-full border p-2 rounded mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+              placeholder="Jumlah anggota (misal 2)"
             />
 
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 bg-gray-200 rounded"
+                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 transition"
               >
                 Cancel
               </button>
               <button
-                onClick={handleSaveTask}
-                className="px-4 py-2 bg-blue-600 text-white rounded"
+                onClick={saveTask}
+                className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition"
               >
-                Save
+                {editingTask ? "Update" : "Save"}
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Notifikasi */}
-      {notification && (
-        <div
-          className={`fixed bottom-6 right-6 px-4 py-3 rounded-xl shadow-lg text-white ${
-            notification.type === "error" ? "bg-red-500" : "bg-green-600"
-          }`}
-        >
-          <FiCheckCircle className="inline mr-2" />
-          {notification.msg}
         </div>
       )}
     </div>

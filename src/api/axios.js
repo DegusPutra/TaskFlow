@@ -1,19 +1,22 @@
 import axios from "axios";
 
-const apiAuth = axios.create({
+// Untuk Auth (register/login)
+export const apiAuth = axios.create({
   baseURL: "http://localhost:5050/api",
 });
 
-const apiTask = axios.create({
+// Untuk TaskPlanner (project, todo, dsb)
+export const apiTask = axios.create({
   baseURL: "http://localhost:5005/api",
 });
 
+// Tambahkan token ke setiap request taskplanner
 apiTask.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
-export default apiAuth;
-
-export { apiAuth, apiTask };
+// Jangan export default (supaya named import tetap konsisten)

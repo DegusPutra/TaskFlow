@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiEdit2, FiTrash2, FiCheckCircle } from "react-icons/fi";
+import { apiTask } from "../api/axios";
 
 export default function ProjectView() {
   const navigate = useNavigate();
@@ -8,39 +9,41 @@ export default function ProjectView() {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [deleteId, setDeleteId] = useState(null); // ✅ simpan id project yang mau dihapus
+  const [deleteId, setDeleteId] = useState(null);
   const [newProject, setNewProject] = useState({
-    name: "",
+    title: "",
     description: "",
     deadline: "",
   });
 
-  // ✅ notifikasi
   const [notification, setNotification] = useState(null);
 
-  // fungsi notifikasi
   const showNotification = (message, type = "success") => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 2500);
   };
 
-  // ambil data dari localStorage
+  // 🔹 Ambil data project dari backend saat komponen pertama kali dijalankan
   useEffect(() => {
-    const savedProjects = localStorage.getItem("projects");
-    if (savedProjects) setProjects(JSON.parse(savedProjects));
+    const fetchProjects = async () => {
+      try {
+        const res = await apiTask.get("/projects");
+        setProjects(res.data);
+      } catch (err) {
+        console.error("Gagal memuat project:", err);
+        showNotification("Gagal memuat project ❌", "error");
+      }
+    };
+    fetchProjects();
   }, []);
-
-  // simpan data ke localStorage
-  useEffect(() => {
-    localStorage.setItem("projects", JSON.stringify(projects));
-  }, [projects]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNewProject((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAddProject = () => {
+  // 🔹 Tambah atau edit project
+  const handleAddProject = async () => {
     if (
       !newProject.name.trim() ||
       !newProject.description.trim() ||
@@ -50,35 +53,33 @@ export default function ProjectView() {
       return;
     }
 
-    if (isEditing) {
-      setProjects((prev) =>
-        prev.map((proj) =>
-          proj.id === editId ? { ...proj, ...newProject } : proj
-        )
-      );
-      showNotification("Project berhasil diperbarui ✅");
-      setIsEditing(false);
-      setEditId(null);
-    } else {
-      const newItem = {
-        id: Date.now().toString(),
-        name: newProject.name.trim(),
-        description: newProject.description.trim(),
-        deadline: newProject.deadline,
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setProjects([newItem, ...projects]);
-      showNotification("Project berhasil ditambahkan 🎉");
-    }
+    try {
+      if (isEditing) {
+        const res = await apiTask.put(`/projects/${editId}`, newProject);
+        setProjects((prev) =>
+          prev.map((proj) => (proj._id === editId ? res.data : proj))
+        );
+        showNotification("Project berhasil diperbarui ✅");
+        setIsEditing(false);
+        setEditId(null);
+      } else {
+        const res = await apiTask.post("/projects", newProject);
+        setProjects([res.data, ...projects]);
+        showNotification("Project berhasil ditambahkan 🎉");
+      }
 
-    setNewProject({ name: "", description: "", deadline: "" });
-    setShowForm(false);
+      setNewProject({ name: "", description: "", deadline: "" });
+      setShowForm(false);
+    } catch (err) {
+      console.error(err);
+      showNotification("Gagal menyimpan project ❌", "error");
+    }
   };
 
   const handleEdit = (proj, e) => {
     e.stopPropagation();
     setIsEditing(true);
-    setEditId(proj.id);
+    setEditId(proj._id);
     setNewProject({
       name: proj.name,
       description: proj.description,
@@ -87,17 +88,21 @@ export default function ProjectView() {
     setShowForm(true);
   };
 
-  // ✅ ubah jadi buka modal konfirmasi
   const handleDelete = (id, e) => {
     e.stopPropagation();
     setDeleteId(id);
   };
 
-  // ✅ konfirmasi hapus (klik "Ya, Hapus")
-  const confirmDelete = () => {
-    setProjects((prev) => prev.filter((p) => p.id !== deleteId));
-    showNotification("Project dihapus 🗑️", "error");
-    setDeleteId(null);
+  const confirmDelete = async () => {
+    try {
+      await apiTask.delete(`/projects/${deleteId}`);
+      setProjects((prev) => prev.filter((p) => p._id !== deleteId));
+      showNotification("Project dihapus 🗑️", "error");
+      setDeleteId(null);
+    } catch (err) {
+      console.error(err);
+      showNotification("Gagal menghapus project ❌", "error");
+    }
   };
 
   return (
@@ -128,13 +133,12 @@ export default function ProjectView() {
         ) : (
           projects.map((proj) => (
             <div
-              key={proj.id}
+              key={proj._id}
               onClick={() =>
-                navigate(`/open-project/${proj.id}`, { state: { project: proj } })
+                navigate(`/open-project/${proj._id}`, { state: { project: proj } })
               }
               className="relative cursor-pointer bg-white p-5 rounded-2xl shadow-md border border-gray-200 hover:shadow-lg hover:-translate-y-1 transition-all"
             >
-              {/* Tombol Edit & Delete */}
               <div className="absolute top-3 right-3 flex gap-2">
                 <button
                   onClick={(e) => handleEdit(proj, e)}
@@ -143,7 +147,7 @@ export default function ProjectView() {
                   <FiEdit2 size={16} />
                 </button>
                 <button
-                  onClick={(e) => handleDelete(proj.id, e)}
+                  onClick={(e) => handleDelete(proj._id, e)}
                   className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
                 >
                   <FiTrash2 size={16} />
@@ -157,9 +161,6 @@ export default function ProjectView() {
               <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
                 <div>
                   📅 Deadline: <span className="font-medium">{proj.deadline}</span>
-                </div>
-                <div>
-                  🕓 Created: <span className="font-medium">{proj.createdAt}</span>
                 </div>
               </div>
             </div>
@@ -187,9 +188,7 @@ export default function ProjectView() {
               {isEditing ? "Edit Project" : "Create New Project"}
             </h2>
 
-            <label className="text-sm font-medium text-gray-700">
-              Project Name
-            </label>
+            <label className="text-sm font-medium text-gray-700">Project Name</label>
             <input
               name="name"
               type="text"
@@ -198,9 +197,7 @@ export default function ProjectView() {
               className="w-full border border-gray-300 p-2 rounded mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
             />
 
-            <label className="text-sm font-medium text-gray-700">
-              Description
-            </label>
+            <label className="text-sm font-medium text-gray-700">Description</label>
             <textarea
               name="description"
               value={newProject.description}
@@ -209,9 +206,7 @@ export default function ProjectView() {
               rows={3}
             />
 
-            <label className="text-sm font-medium text-gray-700">
-              Deadline
-            </label>
+            <label className="text-sm font-medium text-gray-700">Deadline</label>
             <input
               name="deadline"
               type="date"
@@ -238,7 +233,7 @@ export default function ProjectView() {
         </div>
       )}
 
-      {/* ✅ Modal Konfirmasi Delete */}
+      {/* Modal Konfirmasi Delete */}
       {deleteId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center">
@@ -263,13 +258,11 @@ export default function ProjectView() {
         </div>
       )}
 
-      {/* ✅ Notifikasi */}
+      {/* Notifikasi */}
       {notification && (
         <div
           className={`fixed bottom-6 right-6 px-4 py-3 rounded-xl shadow-lg text-white text-sm flex items-center gap-2 animate-fadeIn ${
-            notification.type === "error"
-              ? "bg-red-500"
-              : "bg-green-600"
+            notification.type === "error" ? "bg-red-500" : "bg-green-600"
           }`}
         >
           <FiCheckCircle size={18} />

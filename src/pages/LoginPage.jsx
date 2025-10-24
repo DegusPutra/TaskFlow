@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiAuth } from "../api/axios";
+import { apiAuth } from "../api/axios"; // ✅ ubah di sini
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -13,9 +13,8 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
-      const res = await apiAuth.post("/auth/login", formData);
+      const res = await apiAuth.post("/auth/login", formData); // ✅ tetap sama
       alert(`Selamat datang, ${res.data.name}!`);
 
       localStorage.setItem("token", res.data.token);
@@ -40,9 +39,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
+            <label>Email</label>
             <input
               type="email"
               name="email"
@@ -52,11 +49,8 @@ export default function LoginPage() {
               className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Password
-            </label>
+            <label>Password</label>
             <input
               type="password"
               name="password"
@@ -66,7 +60,6 @@ export default function LoginPage() {
               className="w-full border p-2 rounded focus:ring-2 focus:ring-blue-400"
             />
           </div>
-
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"

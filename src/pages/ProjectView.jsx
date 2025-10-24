@@ -1,9 +1,7 @@
-// src/pages/ProjectView.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiEdit2, FiTrash2, FiCheckCircle } from "react-icons/fi";
-
-const API_URL = "http://localhost:5005/api/projects"; 
+import { apiTask } from "../api/axios";
 
 export default function ProjectView() {
   const navigate = useNavigate();
@@ -19,17 +17,46 @@ export default function ProjectView() {
   });
   const [notification, setNotification] = useState(null);
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    try {
+      let date;
+    if (dateString.includes("T")) {
+      date = new Date(dateString);
+    } else {
+      date = new Date(`${dateString}T00:00:00`);
+    }
+      if (isNaN(date)) return "-";
+
+      return date.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Jakarta",
+      });
+    } catch (err) {
+       console.error("Format tanggal error:", err);
+      return "-";
+    }
+  };
+
   const showNotification = (message, type = "success") => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 2500);
   };
 
-  // ✅ Ambil semua project dari backend
+  // Ambil project
   useEffect(() => {
-    fetch(API_URL)
-      .then((res) => res.json())
-      .then((data) => setProjects(data))
-      .catch(() => showNotification("Gagal memuat data!", "error"));
+    const fetchProjects = async () => {
+      try {
+        const res = await apiTask.get("/projects");
+        setProjects(res.data || []);
+      } catch (err) {
+        console.error("Gagal memuat project:", err);
+        showNotification("Gagal memuat project ❌", "error");
+      }
+    };
+    fetchProjects();
   }, []);
 
   const handleChange = (e) => {
@@ -37,68 +64,66 @@ export default function ProjectView() {
     setNewProject((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ✅ Tambah atau Edit project
   const handleAddProject = async () => {
     if (!newProject.name || !newProject.description || !newProject.deadline) {
       return showNotification("Isi semua kolom!", "error");
     }
 
+    // ✅ Tambahan penting: pastikan deadline dikonversi ke format ISO yang valid
+    const payload = {
+      ...newProject,
+      deadline: new Date(newProject.deadline).toISOString(),
+    };
+
     try {
       if (isEditing) {
-        const res = await fetch(`${API_URL}/${editId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newProject),
-        });
-        const updated = await res.json();
+        const res = await apiTask.put(`/projects/${editId}`, payload); // ✅ pakai payload
+        const updated = res.data.project || res.data;
         setProjects((prev) => prev.map((p) => (p._id === editId ? updated : p)));
         showNotification("Project diperbarui ✅");
       } else {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newProject),
-        });
-        const added = await res.json();
-        setProjects((prev) => [added, ...prev]);
+        const res = await apiTask.post("/projects", payload); // ✅ pakai payload
+        setProjects((prev) => [res.data, ...prev]);
         showNotification("Project berhasil ditambahkan 🎉");
       }
 
       setNewProject({ name: "", description: "", deadline: "" });
-      setIsEditing(false);
       setShowForm(false);
+      setIsEditing(false);
     } catch (err) {
-      showNotification("Gagal menyimpan project!", "error");
+      console.error(err);
+      showNotification("Gagal menyimpan project ❌", "error");
     }
-  };
-
-  // ✅ Hapus project
-  const confirmDelete = async () => {
-    try {
-      await fetch(`${API_URL}/${deleteId}`, { method: "DELETE" });
-      setProjects((prev) => prev.filter((p) => p._id !== deleteId));
-      showNotification("Project dihapus 🗑️", "error");
-    } catch {
-      showNotification("Gagal menghapus!", "error");
-    }
-    setDeleteId(null);
   };
 
   const handleEdit = (proj, e) => {
     e.stopPropagation();
     setIsEditing(true);
     setEditId(proj._id);
+    // Pastikan nilai input controlled: ubah deadline ke format yyyy-mm-dd untuk input date
+    const deadlineForInput = proj.deadline ? proj.deadline.split("T")[0] : "";
     setNewProject({
-      name: proj.name,
-      description: proj.description,
-      deadline: proj.deadline,
+      name: proj.name || "",
+      description: proj.description || "",
+      deadline: deadlineForInput,
     });
     setShowForm(true);
   };
 
+  const confirmDelete = async () => {
+    try {
+      await apiTask.delete(`/projects/${deleteId}`);
+      setProjects((prev) => prev.filter((p) => p._id !== deleteId));
+      showNotification("Project dihapus 🗑️", "error");
+    } catch (err) {
+      console.error(err);
+      showNotification("Gagal menghapus project ❌", "error");
+    }
+    setDeleteId(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white relative p-6">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <button
@@ -111,7 +136,7 @@ export default function ProjectView() {
         </div>
       </div>
 
-      {/* Daftar Project */}
+      {/* List Project */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {projects.length === 0 ? (
           <div className="col-span-full text-center text-gray-500 py-12">
@@ -125,7 +150,7 @@ export default function ProjectView() {
               onClick={() =>
                 navigate(`/open-project/${proj._id}`, { state: { project: proj } })
               }
-              className="relative cursor-pointer bg-white p-5 rounded-2xl shadow-md border hover:shadow-lg transition"
+              className="relative bg-white p-5 rounded-2xl shadow-md border hover:shadow-lg transition"
             >
               <div className="absolute top-3 right-3 flex gap-2">
                 <button
@@ -148,17 +173,17 @@ export default function ProjectView() {
               <h2 className="text-xl font-semibold text-blue-700">{proj.name}</h2>
               <p className="text-sm text-gray-600 mt-1">{proj.description}</p>
               <div className="text-xs text-gray-500 mt-3">
-                📅 Deadline: {proj.deadline}
+                📅 Deadline: {formatDate(proj.deadline)}
               </div>
               <div className="text-xs text-gray-500">
-                🕓 Created: {proj.createdAt?.split("T")[0]}
+                🕓 Created: {formatDate(proj.createdAt)}
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Tombol Tambah */}
+      {/* Floating Add Button */}
       <button
         onClick={() => {
           setShowForm(true);
@@ -193,6 +218,7 @@ export default function ProjectView() {
               value={newProject.description}
               onChange={handleChange}
               className="w-full border p-2 rounded mb-3"
+              rows={3}
             />
 
             <label className="text-sm font-medium">Deadline</label>
@@ -208,10 +234,7 @@ export default function ProjectView() {
               <button onClick={() => setShowForm(false)} className="px-4 py-2 bg-gray-200 rounded">
                 Cancel
               </button>
-              <button
-                onClick={handleAddProject}
-                className="px-4 py-2 bg-blue-600 text-white rounded"
-              >
+              <button onClick={handleAddProject} className="px-4 py-2 bg-blue-600 text-white rounded">
                 {isEditing ? "Update" : "Save"}
               </button>
             </div>
@@ -223,22 +246,10 @@ export default function ProjectView() {
       {deleteId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-2xl text-center">
-            <h3 className="text-lg font-semibold mb-3">
-              Yakin ingin menghapus project ini?
-            </h3>
+            <h3 className="text-lg font-semibold mb-3">Yakin ingin menghapus project ini?</h3>
             <div className="flex justify-center gap-3 mt-4">
-              <button
-                onClick={() => setDeleteId(null)}
-                className="px-4 py-2 bg-gray-200 rounded"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded"
-              >
-                Ya, Hapus
-              </button>
+              <button onClick={() => setDeleteId(null)} className="px-4 py-2 bg-gray-200 rounded">Batal</button>
+              <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded">Ya, Hapus</button>
             </div>
           </div>
         </div>
@@ -246,11 +257,7 @@ export default function ProjectView() {
 
       {/* Notifikasi */}
       {notification && (
-        <div
-          className={`fixed bottom-6 right-6 px-4 py-3 rounded-xl shadow-lg text-white text-sm flex items-center gap-2 ${
-            notification.type === "error" ? "bg-red-500" : "bg-green-600"
-          }`}
-        >
+        <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-xl shadow-lg text-white text-sm flex items-center gap-2 ${notification.type === "error" ? "bg-red-500" : "bg-green-600"}`}>
           <FiCheckCircle size={18} />
           <span>{notification.message}</span>
         </div>

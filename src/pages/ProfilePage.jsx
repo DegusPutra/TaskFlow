@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api/axios";
+import { apiAuth } from "../api/axios"; // ✅ pakai apiAuth, bukan default import
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -12,13 +12,24 @@ export default function ProfilePage() {
     password: "",
   });
 
+  // ✅ Ambil profil user dari backend (auth service)
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await api.get("/users/me");
+        const token = localStorage.getItem("token");
+        if (!token) {
+          alert("Sesi login habis, silakan login ulang.");
+          return navigate("/login");
+        }
+
+        const res = await apiAuth.get("/users/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
         setUser(res.data);
         setEditData({ name: res.data.name, email: res.data.email, password: "" });
       } catch (error) {
+        console.error("Gagal ambil profil:", error);
         alert("Sesi login habis, silakan login ulang.");
         navigate("/login");
       }
@@ -26,24 +37,32 @@ export default function ProfilePage() {
     fetchProfile();
   }, [navigate]);
 
+  // ✅ Logout user
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userData");
     navigate("/login");
   };
 
+  // ✅ Update input edit profil
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // ✅ Simpan profil yang diedit
   const handleSaveEdit = async () => {
     try {
-      const res = await api.put("/users/me", editData);
+      const token = localStorage.getItem("token");
+      const res = await apiAuth.put("/users/me", editData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       alert("Profil berhasil diperbarui!");
       setUser(res.data);
       setIsEditing(false);
     } catch (error) {
+      console.error(error);
       alert(error.response?.data?.message || "Gagal memperbarui profil");
     }
   };

@@ -2,79 +2,95 @@ import { useState, useEffect } from "react";
 import { FiEdit, FiTrash2, FiArrowLeft } from "react-icons/fi";
 import { IoAddCircle } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
+import { apiTodo } from "../api/axios";
 
 export default function ToDoList() {
   const navigate = useNavigate();
-  
   const [tasks, setTasks] = useState([]);
-
-  useEffect(() => {
-  localStorage.setItem("tasks", JSON.stringify(tasks));
-}, [tasks]);
-
   const [newTask, setNewTask] = useState("");
   const [newDescription, setNewDescription] = useState("");
-  const [newDeadline, setNewDeadline] = useState("");
   const [editTaskId, setEditTaskId] = useState(null);
   const [editText, setEditText] = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editDeadline, setEditDeadline] = useState("");
-
   const [showForm, setShowForm] = useState(false);
 
-  // tambah tugas baru
-  const addTask = () => {
-    if (!newTask.trim() || !newDeadline.trim()) return;
-    const newItem = {
-      id: Date.now(),
-      text: newTask,
-      description: newDescription,
-      deadline: newDeadline,
-      done: false,
+  // ✅ Ambil semua task dari backend
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const res = await apiTodo.get("/tasks");
+        setTasks(res.data);
+      } catch (err) {
+        console.error("Gagal ambil data task:", err);
+      }
     };
-    setTasks([...tasks, newItem]);
-    setNewTask("");
-    setNewDescription("");
-    setNewDeadline("");
-    setShowForm(false);
+    fetchTasks();
+  }, []);
+
+  // ✅ Tambah tugas baru
+  const addTask = async () => {
+    if (!newTask.trim()) return;
+    try {
+      const newItem = {
+        title: newTask,
+        description: newDescription,
+        done: false, // default belum selesai
+      };
+      const res = await apiTodo.post("/tasks", newItem);
+      setTasks([...tasks, res.data]);
+      setNewTask("");
+      setNewDescription("");
+      setShowForm(false);
+    } catch (err) {
+      console.error("Gagal menambah task:", err);
+    }
   };
 
-  // hapus tugas
-  const deleteTask = (id) => {
-    setTasks(tasks.filter((t) => t.id !== id));
+  // ✅ Hapus tugas
+  const deleteTask = async (id) => {
+    try {
+      await apiTodo.delete(`/tasks/${id}`);
+      setTasks(tasks.filter((t) => t._id !== id));
+    } catch (err) {
+      console.error("Gagal hapus task:", err);
+    }
   };
 
-  // mulai edit
+  // ✅ Mulai edit
   const startEdit = (task) => {
-    setEditTaskId(task.id);
-    setEditText(task.text);
-    setEditDescription(task.description);
-    setEditDeadline(task.deadline);
+    setEditTaskId(task._id);
+    setEditText(task.title);
+    setEditDescription(task.description || "");
   };
 
-  // simpan hasil edit
-  const saveEdit = () => {
-    setTasks(
-      tasks.map((t) =>
-        t.id === editTaskId
-          ? {
-              ...t,
-              text: editText,
-              description: editDescription,
-              deadline: editDeadline,
-            }
-          : t
-      )
-    );
-    setEditTaskId(null);
-    setEditText("");
-    setEditDescription("");
-    setEditDeadline("");
+  // ✅ Simpan hasil edit
+  const saveEdit = async () => {
+    try {
+      const updatedTask = {
+        title: editText,
+        description: editDescription,
+      };
+      const res = await apiTodo.put(`/tasks/${editTaskId}`, updatedTask);
+      setTasks(tasks.map((t) => (t._id === editTaskId ? res.data : t)));
+      setEditTaskId(null);
+      setEditText("");
+      setEditDescription("");
+    } catch (err) {
+      console.error("Gagal update task:", err);
+    }
   };
 
-  // tandai selesai
-  const toggleDone = (id) => {
-    setTasks(tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  // ✅ Ubah status selesai (done)
+  const toggleDone = async (task) => {
+    try {
+      const res = await apiTodo.put(`/tasks/${task._id}`, {
+        ...task,
+        done: !task.done,
+      });
+      setTasks(tasks.map((t) => (t._id === task._id ? res.data : t)));
+    } catch (err) {
+      console.error("Gagal update status done:", err);
+    }
   };
 
   return (
@@ -99,12 +115,12 @@ export default function ToDoList() {
         <div className="space-y-4">
           {tasks.map((task) => (
             <div
-              key={task.id}
-              className={`flex flex-col border border-gray-200 rounded-lg p-4 shadow-sm transition ${
-                task.done ? "bg-green-100" : "bg-gray-50"
+              key={task._id}
+              className={`flex flex-col border border-gray-200 rounded-lg p-4 shadow-sm transition bg-gray-50 ${
+                task.done ? "opacity-70" : ""
               }`}
             >
-              {editTaskId === task.id ? (
+              {editTaskId === task._id ? (
                 <div className="flex flex-col gap-3">
                   <input
                     type="text"
@@ -115,12 +131,6 @@ export default function ToDoList() {
                   <textarea
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                  <input
-                    type="date"
-                    value={editDeadline}
-                    onChange={(e) => setEditDeadline(e.target.value)}
                     className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
                   <div className="flex gap-2">
@@ -144,22 +154,28 @@ export default function ToDoList() {
                     <input
                       type="checkbox"
                       checked={task.done}
-                      onChange={() => toggleDone(task.id)}
-                      className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      onChange={() => toggleDone(task)}
+                      className="mt-1 w-5 h-5 accent-green-600"
                     />
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-800">
-                        {task.text}
+                      <h2
+                        className={`text-lg font-semibold ${
+                          task.done
+                            ? "line-through text-gray-500"
+                            : "text-gray-800"
+                        }`}
+                      >
+                        {task.title}
                       </h2>
                       {task.description && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p
+                          className={`text-sm mt-1 ${
+                            task.done ? "text-gray-400" : "text-gray-600"
+                          }`}
+                        >
                           {task.description}
                         </p>
                       )}
-                      <p className="text-sm text-gray-500 mt-2">
-                        Deadline:{" "}
-                        <span className="font-medium">{task.deadline}</span>
-                      </p>
                     </div>
                   </div>
 
@@ -171,7 +187,7 @@ export default function ToDoList() {
                       <FiEdit size={18} />
                     </button>
                     <button
-                      onClick={() => deleteTask(task.id)}
+                      onClick={() => deleteTask(task._id)}
                       className="text-red-600 hover:text-red-800"
                     >
                       <FiTrash2 size={18} />
@@ -215,12 +231,6 @@ export default function ToDoList() {
               placeholder="Deskripsi tugas..."
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <input
-              type="date"
-              value={newDeadline}
-              onChange={(e) => setNewDeadline(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
 

@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiEdit2, FiTrash2, FiCheckCircle } from "react-icons/fi";
 import { apiTask } from "../api/axios";
+import { useNotifications } from "../context/NotificationContext"; 
 
 export default function ProjectView() {
   const navigate = useNavigate();
+  const { addNotification } = useNotifications(); 
   const [projects, setProjects] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -20,22 +22,15 @@ export default function ProjectView() {
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     try {
-      let date;
-    if (dateString.includes("T")) {
-      date = new Date(dateString);
-    } else {
-      date = new Date(`${dateString}T00:00:00`);
-    }
+      const date = new Date(dateString);
       if (isNaN(date)) return "-";
-
       return date.toLocaleDateString("id-ID", {
         day: "numeric",
         month: "long",
         year: "numeric",
         timeZone: "Asia/Jakarta",
       });
-    } catch (err) {
-       console.error("Format tanggal error:", err);
+    } catch {
       return "-";
     }
   };
@@ -45,7 +40,6 @@ export default function ProjectView() {
     setTimeout(() => setNotification(null), 2500);
   };
 
-  // Ambil project
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -69,22 +63,18 @@ export default function ProjectView() {
       return showNotification("Isi semua kolom!", "error");
     }
 
-    // ✅ Tambahan penting: pastikan deadline dikonversi ke format ISO yang valid
-    const payload = {
-      ...newProject,
-      deadline: new Date(newProject.deadline).toISOString(),
-    };
-
     try {
       if (isEditing) {
-        const res = await apiTask.put(`/projects/${editId}`, payload); // ✅ pakai payload
+        const res = await apiTask.put(`/projects/${editId}`, newProject);
         const updated = res.data.project || res.data;
         setProjects((prev) => prev.map((p) => (p._id === editId ? updated : p)));
         showNotification("Project diperbarui ✅");
+        addNotification(`Project "${newProject.name}" berhasil diperbarui ✅`, "success"); 
       } else {
-        const res = await apiTask.post("/projects", payload); // ✅ pakai payload
+        const res = await apiTask.post("/projects", newProject);
         setProjects((prev) => [res.data, ...prev]);
         showNotification("Project berhasil ditambahkan 🎉");
+        addNotification(`Project "${newProject.name}" berhasil dibuat 🎉`, "success"); 
       }
 
       setNewProject({ name: "", description: "", deadline: "" });
@@ -93,6 +83,7 @@ export default function ProjectView() {
     } catch (err) {
       console.error(err);
       showNotification("Gagal menyimpan project ❌", "error");
+      addNotification("Gagal menyimpan project ❌", "error"); // ✅
     }
   };
 
@@ -100,7 +91,6 @@ export default function ProjectView() {
     e.stopPropagation();
     setIsEditing(true);
     setEditId(proj._id);
-    // Pastikan nilai input controlled: ubah deadline ke format yyyy-mm-dd untuk input date
     const deadlineForInput = proj.deadline ? proj.deadline.split("T")[0] : "";
     setNewProject({
       name: proj.name || "",
@@ -113,11 +103,14 @@ export default function ProjectView() {
   const confirmDelete = async () => {
     try {
       await apiTask.delete(`/projects/${deleteId}`);
+      const deletedProj = projects.find((p) => p._id === deleteId);
       setProjects((prev) => prev.filter((p) => p._id !== deleteId));
       showNotification("Project dihapus 🗑️", "error");
+      addNotification(`Project "${deletedProj?.name}" telah dihapus 🗑️`, "error"); 
     } catch (err) {
       console.error(err);
       showNotification("Gagal menghapus project ❌", "error");
+      addNotification("Gagal menghapus project ❌", "error"); // ✅
     }
     setDeleteId(null);
   };

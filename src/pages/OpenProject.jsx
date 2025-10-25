@@ -1,13 +1,18 @@
-// src/pages/OpenProject.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { apiTask } from "../api/axios";
+import { UserContext } from "../UserContext"; 
 
 export default function OpenProject() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
+
+  // 🔹 Ambil user dari context
+  const { user } = useContext(UserContext);
+  console.log("👤 User dari Context:", user);
+
   const projectFromState = location.state?.project || null;
 
   const [project, setProject] = useState(
@@ -22,7 +27,13 @@ export default function OpenProject() {
     members: 1,
     status: "todo",
   });
-  const [role, setRole] = useState("editor"); // bisa editor / viewer
+
+  // ⬇️ Kalau user punya role, pakai dari context. Kalau tidak, default "editor"
+  const [role, setRole] = useState(user?.role || "editor");
+
+  useEffect(() => {
+    if (user?.role) setRole(user.role);
+  }, [user]);
 
   // 🔹 Ambil semua task berdasarkan project ID
   useEffect(() => {
@@ -44,13 +55,11 @@ export default function OpenProject() {
     fetchTasks();
   }, [id]);
 
-  // 🔹 Handle perubahan input
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNewTask((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 🔹 Simpan (Tambah / Edit)
   const saveTask = async () => {
     if (!newTask.title || !newTask.deadline) {
       return alert("Isi semua kolom sebelum menyimpan!");
@@ -66,12 +75,11 @@ export default function OpenProject() {
       deadline: newTask.deadline,
       members: membersArray,
       status: newTask.status || "todo",
-      project: id, // penting: kaitkan task dengan project
+      project: id,
     };
 
     try {
       if (editingTask) {
-        // 🟢 UPDATE TASK
         const res = await apiTask.put(`/tasks/${editingTask._id}`, taskData);
 
         setTasks((prev) => {
@@ -84,7 +92,6 @@ export default function OpenProject() {
           return updated;
         });
       } else {
-        // 🟢 CREATE TASK BARU
         const res = await apiTask.post(`/projects/${id}/tasks`, taskData);
         setTasks((prev) => ({
           ...prev,
@@ -92,7 +99,6 @@ export default function OpenProject() {
         }));
       }
 
-      // Reset form
       setShowForm(false);
       setEditingTask(null);
       setNewTask({ title: "", deadline: "", members: 1, status: "todo" });
@@ -102,13 +108,11 @@ export default function OpenProject() {
     }
   };
 
-  // 🔹 Edit Task
   const handleEdit = (task) => {
     if (role === "viewer") return;
     setEditingTask(task);
     setNewTask({
       title: task.title,
-      // Format deadline agar cocok untuk input type="date"
       deadline: task.deadline
         ? new Date(task.deadline).toISOString().split("T")[0]
         : "",
@@ -118,7 +122,6 @@ export default function OpenProject() {
     setShowForm(true);
   };
 
-  // 🔹 Hapus Task
   const handleDelete = async (taskId) => {
     if (role === "viewer") return;
     if (!window.confirm("Yakin ingin menghapus task ini?")) return;
@@ -138,7 +141,6 @@ export default function OpenProject() {
     }
   };
 
-  // 🔹 Drag & Drop
   const onDragEnd = async (result) => {
     if (!result.destination) return;
     if (role === "viewer") return;
@@ -170,7 +172,6 @@ export default function OpenProject() {
     }
   };
 
-  // 🔹 Share project link
   const handleShare = async () => {
     const link = `${window.location.origin}/open-project/${id}`;
     await navigator.clipboard.writeText(link);
@@ -183,10 +184,8 @@ export default function OpenProject() {
     { id: "done", title: "Done", color: "bg-green-100" },
   ];
 
-  // 🟢 Tampilan utama
   return (
     <div className="min-h-screen p-6 bg-gradient-to-br from-blue-50 to-white relative">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <button
@@ -201,7 +200,6 @@ export default function OpenProject() {
           </div>
         </div>
 
-        {/* Role selector + share */}
         <div className="flex gap-3">
           <select
             value={role}
@@ -221,7 +219,6 @@ export default function OpenProject() {
         </div>
       </div>
 
-      {/* Kolom Drag & Drop */}
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {columns.map((col) => (
@@ -249,7 +246,6 @@ export default function OpenProject() {
                             {t.title}
                           </div>
 
-                          {/* 🟢 Tampilkan deadline dengan format lokal */}
                           <div className="text-xs text-gray-500 mt-1">
                             🗓️ Deadline:{" "}
                             {t.deadline
@@ -293,7 +289,6 @@ export default function OpenProject() {
         </div>
       </DragDropContext>
 
-      {/* Tombol Tambah */}
       {role === "editor" && (
         <button
           onClick={() => {
@@ -307,7 +302,6 @@ export default function OpenProject() {
         </button>
       )}
 
-      {/* Modal Add/Edit */}
       {showForm && role === "editor" && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md">

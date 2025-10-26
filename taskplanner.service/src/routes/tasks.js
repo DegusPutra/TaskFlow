@@ -4,9 +4,12 @@ import {
   createTask,
   updateTask,
   deleteTask,
+  getAllTasks,
 } from "../controllers/tasksController.js";
 
 const router = express.Router();
+
+router.get("/tasks", getAllTasks);
 
 router.get("/projects/:projectId/tasks", getTasksByProject);
 router.post("/projects/:projectId/tasks", createTask);

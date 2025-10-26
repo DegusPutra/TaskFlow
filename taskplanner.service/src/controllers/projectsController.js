@@ -3,7 +3,7 @@ import Project from "../models/project.js";
 // GET semua project milik user
 export const getProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ createdBy: req.user.id });
+    const projects = await Project.find({ createdBy: req.user?.id || null });
     res.json(projects);
   } catch (err) {
     console.error("❌ Error getProjects:", err);
@@ -17,17 +17,24 @@ export const createProject = async (req, res) => {
     console.log("📥 Request body:", req.body);
     console.log("👤 User:", req.user);
 
-    const { name, description, deadline } = req.body;
+    // frontend kirim 'title', bukan 'name'
+    const { title, name, description, deadline } = req.body;
 
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ error: "Unauthorized: user not found" });
+    // Gunakan title jika ada, kalau tidak pakai name (fallback)
+    const projectName = title || name;
+
+    if (!projectName || !description) {
+      return res.status(400).json({ error: "Name/title dan description wajib diisi" });
     }
 
+    // Antisipasi user belum login (biar tidak error 500)
+    const userId = req.user?.id || "guest";
+
     const project = new Project({
-      name,
+      name: projectName,
       description,
-      createdBy: req.user.id,
-      deadline,
+      createdBy: userId,
+      deadline: deadline ? new Date(deadline) : null, // pastikan format Date valid
     });
 
     await project.save();
@@ -53,16 +60,23 @@ export const getProject = async (req, res) => {
 // PUT update project
 export const updateProject = async (req, res) => {
   try {
-    const { name, description, deadline } = req.body; // ✅ tambahkan deadline
+    const { title, name, description, deadline } = req.body;
+
+    const projectName = title || name;
 
     const project = await Project.findByIdAndUpdate(
       req.params.id,
-      { name, description, deadline, updatedAt: Date.now() }, // ✅ ikut disimpan
+      {
+        name: projectName,
+        description,
+        deadline: deadline ? new Date(deadline) : null,
+        updatedAt: Date.now(),
+      },
       { new: true }
     );
 
     if (!project) return res.status(404).json({ error: "Project not found" });
-    res.json(project); // ✅ kirim data project langsung (tidak perlu bungkus message)
+    res.json(project);
   } catch (err) {
     console.error("❌ Error updateProject:", err);
     res.status(500).json({ error: err.message });

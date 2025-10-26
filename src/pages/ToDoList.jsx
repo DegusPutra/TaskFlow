@@ -9,9 +9,11 @@ export default function ToDoList() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
   const [newDescription, setNewDescription] = useState("");
+  const [newDeadline, setNewDeadline] = useState("");
   const [editTaskId, setEditTaskId] = useState(null);
   const [editText, setEditText] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
   const [showForm, setShowForm] = useState(false);
 
   // ✅ Ambil semua task dari backend
@@ -34,12 +36,14 @@ export default function ToDoList() {
       const newItem = {
         title: newTask,
         description: newDescription,
-        done: false, // default belum selesai
+        deadline: newDeadline || null,
+        done: false,
       };
       const res = await apiTodo.post("/tasks", newItem);
       setTasks([...tasks, res.data]);
       setNewTask("");
       setNewDescription("");
+      setNewDeadline("");
       setShowForm(false);
     } catch (err) {
       console.error("Gagal menambah task:", err);
@@ -61,6 +65,7 @@ export default function ToDoList() {
     setEditTaskId(task._id);
     setEditText(task.title);
     setEditDescription(task.description || "");
+    setEditDeadline(task.deadline ? task.deadline.slice(0, 16) : "");
   };
 
   // ✅ Simpan hasil edit
@@ -69,12 +74,14 @@ export default function ToDoList() {
       const updatedTask = {
         title: editText,
         description: editDescription,
+        deadline: editDeadline || null,
       };
       const res = await apiTodo.put(`/tasks/${editTaskId}`, updatedTask);
       setTasks(tasks.map((t) => (t._id === editTaskId ? res.data : t)));
       setEditTaskId(null);
       setEditText("");
       setEditDescription("");
+      setEditDeadline("");
     } catch (err) {
       console.error("Gagal update task:", err);
     }
@@ -91,6 +98,16 @@ export default function ToDoList() {
     } catch (err) {
       console.error("Gagal update status done:", err);
     }
+  };
+
+  // ✅ Format tanggal deadline agar mudah dibaca
+  const formatDeadline = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleString("id-ID", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
   };
 
   return (
@@ -131,6 +148,12 @@ export default function ToDoList() {
                   <textarea
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <input
+                    type="datetime-local"
+                    value={editDeadline}
+                    onChange={(e) => setEditDeadline(e.target.value)}
                     className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
                   />
                   <div className="flex gap-2">
@@ -174,6 +197,11 @@ export default function ToDoList() {
                           }`}
                         >
                           {task.description}
+                        </p>
+                      )}
+                      {task.deadline && (
+                        <p className="text-xs text-red-500 mt-2">
+                          Deadline: {formatDeadline(task.deadline)}
                         </p>
                       )}
                     </div>
@@ -231,6 +259,12 @@ export default function ToDoList() {
               placeholder="Deskripsi tugas..."
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <input
+              type="datetime-local"
+              value={newDeadline}
+              onChange={(e) => setNewDeadline(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
 

@@ -11,7 +11,7 @@ export default function ProjectView() {
   const [editId, setEditId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [newProject, setNewProject] = useState({
-    title: "",
+    name: "",
     description: "",
     deadline: "",
   });
@@ -23,7 +23,7 @@ export default function ProjectView() {
     setTimeout(() => setNotification(null), 2500);
   };
 
-  // 🔹 Ambil data project dari backend saat komponen pertama kali dijalankan
+  // 🔹 Ambil semua project
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -37,12 +37,13 @@ export default function ProjectView() {
     fetchProjects();
   }, []);
 
+  // 🔹 Update state form
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNewProject((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 🔹 Tambah atau edit project
+  // 🔹 Tambah / Edit project
   const handleAddProject = async () => {
     if (
       !newProject.name.trim() ||
@@ -83,7 +84,7 @@ export default function ProjectView() {
     setNewProject({
       name: proj.name,
       description: proj.description,
-      deadline: proj.deadline,
+      deadline: proj.deadline ? proj.deadline.split("T")[0] : "",
     });
     setShowForm(true);
   };
@@ -160,7 +161,16 @@ export default function ProjectView() {
               <p className="text-sm text-gray-600 mt-1">{proj.description}</p>
               <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
                 <div>
-                  📅 Deadline: <span className="font-medium">{proj.deadline}</span>
+                  📅 Deadline:{" "}
+                  <span className="font-medium">
+                    {proj.deadline
+                      ? new Date(proj.deadline).toLocaleDateString("id-ID", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })
+                      : "Tidak ada"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -188,7 +198,9 @@ export default function ProjectView() {
               {isEditing ? "Edit Project" : "Create New Project"}
             </h2>
 
-            <label className="text-sm font-medium text-gray-700">Project Name</label>
+            <label className="text-sm font-medium text-gray-700">
+              Project Name
+            </label>
             <input
               name="name"
               type="text"
@@ -197,7 +209,9 @@ export default function ProjectView() {
               className="w-full border border-gray-300 p-2 rounded mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
             />
 
-            <label className="text-sm font-medium text-gray-700">Description</label>
+            <label className="text-sm font-medium text-gray-700">
+              Description
+            </label>
             <textarea
               name="description"
               value={newProject.description}

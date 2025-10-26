@@ -7,7 +7,7 @@ import { useNotifications } from "../context/NotificationContext";
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const { notifications } = useNotifications(); // 🔔 Ambil data dari Context
+  const { notifications } = useNotifications();
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
@@ -16,9 +16,9 @@ export default function Navbar() {
     if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
-  // 🔄 Update jumlah notifikasi belum dibaca secara realtime
+  // 🔄 Hitung jumlah notifikasi belum dibaca
   useEffect(() => {
-    const unread = notifications.filter((n) => !n.read).length;
+    const unread = notifications.filter((n) => !n.isRead).length;
     setUnreadCount(unread);
   }, [notifications]);
 
@@ -57,27 +57,15 @@ export default function Navbar() {
             menuOpen ? "top-14 opacity-100" : "-top-96 opacity-0 md:opacity-100"
           }`}
         >
-          <Link
-            to="/dashboard"
-            onClick={() => setMenuOpen(false)}
-            className="hover:text-gray-300"
-          >
+          <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="hover:text-gray-300">
             Dashboard
           </Link>
 
-          <Link
-            to="/taskplanner"
-            onClick={() => setMenuOpen(false)}
-            className="hover:text-gray-300"
-          >
+          <Link to="/taskplanner" onClick={() => setMenuOpen(false)} className="hover:text-gray-300">
             TaskPlanner
           </Link>
 
-          <Link
-            to="/todolist"
-            onClick={() => setMenuOpen(false)}
-            className="hover:text-gray-300"
-          >
+          <Link to="/todolist" onClick={() => setMenuOpen(false)} className="hover:text-gray-300">
             To-Do List
           </Link>
 
@@ -104,7 +92,7 @@ export default function Navbar() {
                 <span className="font-medium">{user.name}</span>
               </div>
 
-              {/* Dropdown Menu */}
+              {/* Dropdown */}
               <div className="absolute right-0 mt-2 bg-white text-gray-700 shadow-lg rounded-md w-36 hidden group-hover:block">
                 <button
                   onClick={() => navigate("/profile")}

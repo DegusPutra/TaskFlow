@@ -1,8 +1,19 @@
-const express = require('express');
+import express from "express";
+import { createHistory, getHistory, getProjectHistory,updateHistory,deleteHistory } from "../controllers/historyController.js";
+
 const router = express.Router();
-const { createHistory } = require('../controllers/historyController');
 
-// POST /api/v1/history
-router.post('/', createHistory);
+// GET semua data history
+router.get("/", getHistory);
 
-module.exports = router;
+// GET daftar project milik user (history project)
+router.get("/projects", getProjectHistory);
+
+// POST tambah data history baru
+router.post("/", createHistory);
+
+router.put("/:id", updateHistory);
+
+router.delete("/:id", deleteHistory);
+
+export default router;

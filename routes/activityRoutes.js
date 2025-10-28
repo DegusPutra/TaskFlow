@@ -1,8 +1,9 @@
-const express = require('express');
+import express from "express";
+import { createActivity, getRecentActivities } from "../controllers/activityController.js";
+
 const router = express.Router();
-const { createActivityLog, getActivityLogs } = require('../controllers/activityLogController');
 
-router.post('/', createActivityLog);
-router.get('/', getActivityLogs);
+router.post("/activity", createActivity);
+router.get("/activity", getRecentActivities);
 
-module.exports = router;
+export default router;

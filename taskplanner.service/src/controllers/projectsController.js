@@ -1,5 +1,5 @@
 import Project from "../models/project.js";
-
+import axios from "axios";
 // GET semua project milik user
 export const getProjects = async (req, res) => {
   try {
@@ -17,28 +17,38 @@ export const createProject = async (req, res) => {
     console.log("📥 Request body:", req.body);
     console.log("👤 User:", req.user);
 
-    // frontend kirim 'title', bukan 'name'
     const { title, name, description, deadline } = req.body;
-
-    // Gunakan title jika ada, kalau tidak pakai name (fallback)
     const projectName = title || name;
+    const userId = req.user?.id || "guest";
 
     if (!projectName || !description) {
       return res.status(400).json({ error: "Name/title dan description wajib diisi" });
     }
 
-    // Antisipasi user belum login (biar tidak error 500)
-    const userId = req.user?.id || "guest";
-
     const project = new Project({
       name: projectName,
       description,
       createdBy: userId,
-      deadline: deadline ? new Date(deadline) : null, // pastikan format Date valid
+      deadline: deadline ? new Date(deadline) : null,
     });
 
-    await project.save();
-    res.status(201).json(project);
+    const savedProject = await project.save();
+
+    // 🔹 Kirim data ke History Service
+    try {
+      await axios.post("http://localhost:3001/history", {
+        projectId: savedProject._id,
+        name: savedProject.name,
+        description: savedProject.description,
+        deadline: savedProject.deadline,
+        createdBy: savedProject.createdBy,
+      });
+      console.log("✅ History created successfully");
+    } catch (err) {
+      console.error("❌ Failed to create history:", err.message);
+    }
+
+    res.status(201).json(savedProject);
   } catch (err) {
     console.error("❌ Error createProject:", err);
     res.status(500).json({ error: err.message });

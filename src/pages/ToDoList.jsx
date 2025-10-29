@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { FiEdit, FiTrash2, FiArrowLeft } from "react-icons/fi";
 import { IoAddCircle } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
-import { apiTodo } from "../api/axios";
+import axios from "axios";
 
 export default function ToDoList() {
   const navigate = useNavigate();
@@ -15,19 +15,43 @@ export default function ToDoList() {
   const [editDescription, setEditDescription] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [showEdit, setShowEdit] = useState(false); // 🟢 modal edit
 
-  // ✅ Ambil semua task dari backend
+  const token = localStorage.getItem("token");
+
+  // 🔹 axios instance dengan token otomatis
+  const apiTodo = axios.create({
+    baseURL: "http://localhost:5010/api",
+  });
+
+  apiTodo.interceptors.request.use((config) => {
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+  });
+
+  // ✅ Ambil semua task user login
   useEffect(() => {
+    if (!token) {
+      alert("Silakan login terlebih dahulu.");
+      navigate("/login");
+      return;
+    }
+
     const fetchTasks = async () => {
       try {
         const res = await apiTodo.get("/tasks");
         setTasks(res.data);
       } catch (err) {
         console.error("Gagal ambil data task:", err);
+        if (err.response?.status === 401) {
+          alert("Sesi telah habis. Silakan login kembali.");
+          navigate("/login");
+        }
       }
     };
+
     fetchTasks();
-  }, []);
+  }, [token]);
 
   // ✅ Tambah tugas baru
   const addTask = async () => {
@@ -47,6 +71,8 @@ export default function ToDoList() {
       setShowForm(false);
     } catch (err) {
       console.error("Gagal menambah task:", err);
+      if (err.response?.status === 401)
+        alert("Sesi habis, silakan login ulang.");
     }
   };
 
@@ -60,12 +86,13 @@ export default function ToDoList() {
     }
   };
 
-  // ✅ Mulai edit
+  // ✅ Mulai edit (buka popup)
   const startEdit = (task) => {
     setEditTaskId(task._id);
     setEditText(task.title);
     setEditDescription(task.description || "");
     setEditDeadline(task.deadline ? task.deadline.slice(0, 16) : "");
+    setShowEdit(true); // 🟢 tampilkan modal edit
   };
 
   // ✅ Simpan hasil edit
@@ -77,8 +104,9 @@ export default function ToDoList() {
         deadline: editDeadline || null,
       };
       const res = await apiTodo.put(`/tasks/${editTaskId}`, updatedTask);
-      setTasks(tasks.map((t) => (t._id === editTaskId ? res.data : t)));
+      setTasks(tasks.map((t) => (t._id == editTaskId ? res.data : t)));
       setEditTaskId(null);
+      setShowEdit(false); // 🟢 tutup modal
       setEditText("");
       setEditDescription("");
       setEditDeadline("");
@@ -133,96 +161,58 @@ export default function ToDoList() {
           {tasks.map((task) => (
             <div
               key={task._id}
-              className={`flex flex-col border border-gray-200 rounded-lg p-4 shadow-sm transition bg-gray-50 ${
+              className={`flex justify-between items-start border border-gray-200 rounded-lg p-4 shadow-sm transition bg-gray-50 ${
                 task.done ? "opacity-70" : ""
               }`}
             >
-              {editTaskId === task._id ? (
-                <div className="flex flex-col gap-3">
-                  <input
-                    type="text"
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                  <textarea
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                  <input
-                    type="datetime-local"
-                    value={editDeadline}
-                    onChange={(e) => setEditDeadline(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={saveEdit}
-                      className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition"
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={task.done}
+                  onChange={() => toggleDone(task)}
+                  className="mt-1 w-5 h-5 accent-green-600"
+                />
+                <div>
+                  <h2
+                    className={`text-lg font-semibold ${
+                      task.done
+                        ? "line-through text-gray-500"
+                        : "text-gray-800"
+                    }`}
+                  >
+                    {task.title}
+                  </h2>
+                  {task.description && (
+                    <p
+                      className={`text-sm mt-1 ${
+                        task.done ? "text-gray-400" : "text-gray-600"
+                      }`}
                     >
-                      Simpan
-                    </button>
-                    <button
-                      onClick={() => setEditTaskId(null)}
-                      className="bg-gray-400 text-white px-3 py-2 rounded-lg hover:bg-gray-500 transition"
-                    >
-                      Batal
-                    </button>
-                  </div>
+                      {task.description}
+                    </p>
+                  )}
+                  {task.deadline && (
+                    <p className="text-xs text-red-500 mt-2">
+                      Deadline: {formatDeadline(task.deadline)}
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <div className="flex justify-between items-start">
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={task.done}
-                      onChange={() => toggleDone(task)}
-                      className="mt-1 w-5 h-5 accent-green-600"
-                    />
-                    <div>
-                      <h2
-                        className={`text-lg font-semibold ${
-                          task.done
-                            ? "line-through text-gray-500"
-                            : "text-gray-800"
-                        }`}
-                      >
-                        {task.title}
-                      </h2>
-                      {task.description && (
-                        <p
-                          className={`text-sm mt-1 ${
-                            task.done ? "text-gray-400" : "text-gray-600"
-                          }`}
-                        >
-                          {task.description}
-                        </p>
-                      )}
-                      {task.deadline && (
-                        <p className="text-xs text-red-500 mt-2">
-                          Deadline: {formatDeadline(task.deadline)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+              </div>
 
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => startEdit(task)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <FiEdit size={18} />
-                    </button>
-                    <button
-                      onClick={() => deleteTask(task._id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <FiTrash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => startEdit(task)}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  <FiEdit size={18} />
+                </button>
+                <button
+                  onClick={() => deleteTask(task._id)}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <FiTrash2 size={18} />
+                </button>
+              </div>
             </div>
           ))}
 
@@ -240,7 +230,7 @@ export default function ToDoList() {
         <IoAddCircle size={40} />
       </button>
 
-      {/* Popup tambah catatan */}
+      {/* 🟢 Popup tambah catatan */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-lg w-96">
@@ -280,6 +270,52 @@ export default function ToDoList() {
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
               >
                 Tambah
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🟢 Popup Edit Catatan */}
+      {showEdit && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-lg w-96">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">
+              Edit Catatan
+            </h2>
+
+            <input
+              type="text"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              placeholder="Judul tugas..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <textarea
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="Deskripsi tugas..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <input
+              type="datetime-local"
+              value={editDeadline}
+              onChange={(e) => setEditDeadline(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowEdit(false)}
+                className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition"
+              >
+                Batal
+              </button>
+              <button
+                onClick={saveEdit}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                Simpan
               </button>
             </div>
           </div>

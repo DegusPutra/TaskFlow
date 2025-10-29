@@ -1,24 +1,22 @@
+// ✅ src/pages/OpenProject.jsx
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { apiTask } from "../api/axios";
-import { UserContext } from "../UserContext"; 
+import { UserContext } from "../UserContext";
 
 export default function OpenProject() {
   const navigate = useNavigate();
   const { id } = useParams();
   const location = useLocation();
-
-  // 🔹 Ambil user dari context
   const { user } = useContext(UserContext);
-  console.log("👤 User dari Context:", user);
 
   const projectFromState = location.state?.project || null;
 
   const [project, setProject] = useState(
     projectFromState || { id, name: "Project", description: "" }
   );
-  const [tasks, setTasks] = useState({ todo: [], inprogress: [], done: [] });
+  const [tasks, setTasks] = useState({ todo: [], in_progress: [], done: [] });
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [newTask, setNewTask] = useState({
@@ -27,23 +25,24 @@ export default function OpenProject() {
     members: 1,
     status: "todo",
   });
-
-  // ⬇️ Kalau user punya role, pakai dari context. Kalau tidak, default "editor"
   const [role, setRole] = useState(user?.role || "editor");
 
   useEffect(() => {
     if (user?.role) setRole(user.role);
   }, [user]);
 
-  // 🔹 Ambil semua task berdasarkan project ID
+  // ✅ Ambil task dari backend berdasarkan ID project
   useEffect(() => {
     const fetchTasks = async () => {
       try {
         const res = await apiTask.get(`/projects/${id}/tasks`);
-        const grouped = { todo: [], inprogress: [], done: [] };
+        const grouped = { todo: [], in_progress: [], done: [] };
 
         res.data.forEach((t) => {
-          grouped[t.status || "todo"].push(t);
+          const status = ["todo", "in_progress", "done"].includes(t.status)
+            ? t.status
+            : "todo";
+          grouped[status].push(t);
         });
 
         setTasks(grouped);
@@ -55,15 +54,16 @@ export default function OpenProject() {
     fetchTasks();
   }, [id]);
 
+  // 🔹 Handle input
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNewTask((prev) => ({ ...prev, [name]: value }));
   };
 
+  // 🔹 Simpan task baru atau update task lama
   const saveTask = async () => {
-    if (!newTask.title || !newTask.deadline) {
+    if (!newTask.title || !newTask.deadline)
       return alert("Isi semua kolom sebelum menyimpan!");
-    }
 
     const membersArray = Array.from(
       { length: Number(newTask.members) },
@@ -81,7 +81,6 @@ export default function OpenProject() {
     try {
       if (editingTask) {
         const res = await apiTask.put(`/tasks/${editingTask._id}`, taskData);
-
         setTasks((prev) => {
           const updated = { ...prev };
           Object.keys(updated).forEach((col) => {
@@ -108,6 +107,7 @@ export default function OpenProject() {
     }
   };
 
+  // 🔹 Edit task
   const handleEdit = (task) => {
     if (role === "viewer") return;
     setEditingTask(task);
@@ -122,6 +122,7 @@ export default function OpenProject() {
     setShowForm(true);
   };
 
+  // 🔹 Hapus task
   const handleDelete = async (taskId) => {
     if (role === "viewer") return;
     if (!window.confirm("Yakin ingin menghapus task ini?")) return;
@@ -141,23 +142,23 @@ export default function OpenProject() {
     }
   };
 
+  // ✅ Drag & Drop fix total (sinkron dengan backend enum)
   const onDragEnd = async (result) => {
-    if (!result.destination) return;
+    const { source, destination } = result;
+    if (!destination) return;
     if (role === "viewer") return;
 
-    const { source, destination } = result;
     const sourceCol = source.droppableId;
     const destCol = destination.droppableId;
-
     if (sourceCol === destCol && source.index === destination.index) return;
 
-    const item = tasks[sourceCol][source.index];
+    const movedTask = tasks[sourceCol][source.index];
 
+    // Update lokal dulu
     const newSource = Array.from(tasks[sourceCol]);
     newSource.splice(source.index, 1);
-
     const newDest = Array.from(tasks[destCol]);
-    newDest.splice(destination.index, 0, { ...item, status: destCol });
+    newDest.splice(destination.index, 0, { ...movedTask, status: destCol });
 
     setTasks((prev) => ({
       ...prev,
@@ -166,12 +167,20 @@ export default function OpenProject() {
     }));
 
     try {
-      await apiTask.put(`/tasks/${item._id}`, { status: destCol });
+      const payload = {
+        title: movedTask.title,
+        deadline: movedTask.deadline,
+        members: movedTask.members,
+        project: movedTask.project,
+        status: destCol,
+      };
+      await apiTask.put(`/tasks/${movedTask._id}`, payload);
     } catch (err) {
-      console.error("❌ Gagal update status task:", err);
+      console.error("❌ Gagal update status:", err);
     }
   };
 
+  // 🔹 Share project
   const handleShare = async () => {
     const link = `${window.location.origin}/open-project/${id}`;
     await navigator.clipboard.writeText(link);
@@ -180,12 +189,13 @@ export default function OpenProject() {
 
   const columns = [
     { id: "todo", title: "To Do", color: "bg-red-100" },
-    { id: "inprogress", title: "In Progress", color: "bg-yellow-100" },
+    { id: "in_progress", title: "In Progress", color: "bg-yellow-100" },
     { id: "done", title: "Done", color: "bg-green-100" },
   ];
 
   return (
     <div className="min-h-screen p-6 bg-gradient-to-br from-blue-50 to-white relative">
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <button
@@ -209,7 +219,6 @@ export default function OpenProject() {
             <option value="editor">👩‍💻 Editor</option>
             <option value="viewer">👀 Viewer</option>
           </select>
-
           <button
             onClick={handleShare}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
@@ -219,6 +228,7 @@ export default function OpenProject() {
         </div>
       </div>
 
+      {/* TASK BOARD */}
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {columns.map((col) => (
@@ -233,7 +243,7 @@ export default function OpenProject() {
                     {col.title}
                   </h3>
 
-                  {tasks[col.id].map((t, idx) => (
+                  {(tasks[col.id] || []).map((t, idx) => (
                     <Draggable draggableId={t._id} index={idx} key={t._id}>
                       {(prov) => (
                         <div
@@ -245,9 +255,8 @@ export default function OpenProject() {
                           <div className="font-medium text-gray-800">
                             {t.title}
                           </div>
-
                           <div className="text-xs text-gray-500 mt-1">
-                            🗓️ Deadline:{" "}
+                            🗓️{" "}
                             {t.deadline
                               ? new Date(t.deadline).toLocaleDateString("id-ID", {
                                   day: "2-digit",
@@ -256,7 +265,6 @@ export default function OpenProject() {
                                 })
                               : "-"}
                           </div>
-
                           <div className="text-xs text-gray-500">
                             👥 Members: {t.members?.length || 0}
                           </div>
@@ -281,6 +289,7 @@ export default function OpenProject() {
                       )}
                     </Draggable>
                   ))}
+
                   {provided.placeholder}
                 </div>
               )}
@@ -289,12 +298,18 @@ export default function OpenProject() {
         </div>
       </DragDropContext>
 
+      {/* ADD BUTTON */}
       {role === "editor" && (
         <button
           onClick={() => {
             setShowForm(true);
             setEditingTask(null);
-            setNewTask({ title: "", deadline: "", members: 1, status: "todo" });
+            setNewTask({
+              title: "",
+              deadline: "",
+              members: 1,
+              status: "todo",
+            });
           }}
           className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white text-3xl font-bold px-6 py-4 rounded-full shadow-lg transition-all"
         >
@@ -302,6 +317,7 @@ export default function OpenProject() {
         </button>
       )}
 
+      {/* FORM INPUT TASK */}
       {showForm && role === "editor" && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md">
@@ -336,7 +352,7 @@ export default function OpenProject() {
               value={newTask.members}
               onChange={handleChange}
               className="w-full border p-2 rounded mb-3 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-              placeholder="Jumlah anggota (misal 2)"
+              placeholder="Jumlah anggota"
             />
 
             <div className="flex justify-end gap-3">

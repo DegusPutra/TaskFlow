@@ -1,43 +1,26 @@
 import jwt from "jsonwebtoken";
-import User from "../models/user.js";
 
-async function ensureUserRecord(authUid, email, name) {
-  let user = await User.findOne({ authUid });
-  if (!user) {
-    user = new User({ authUid, email, name });
-    await user.save();
+export default function auth(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Token tidak ditemukan" });
   }
-  return user;
-}
 
-export default async function auth(req, res, next) {
+  const token = authHeader.split(" ")[1];
+
   try {
-    const isDev =
-      process.env.NODE_ENV === "development" ||
-      process.env.DEV_IGNORE_AUTH === "true";
+    console.log("🪪 Token diterima:", token.slice(0, 40) + "...");
+    console.log("🔑 JWT_SECRET:", process.env.JWT_SECRET);
 
-    if (isDev) {
-      req.user = { id: '6719fddf1b9f2b6c13e45678', email: 'dev@example.com', name: 'Developer' };
-      return next();
-    }
-
-    const authHeader = req.headers.authorization || "";
-    const token = authHeader.split(" ")[1] || null;
-
-    if (!token) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const authUid = payload.sub || payload.user_id || payload.uid;
-    const email = payload.email || null;
-    const name = payload.name || null;
-
-    const user = await ensureUserRecord(authUid, email, name);
-    req.user = { id: user._id, authUid, email, name };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("✅ Token valid, decoded:", decoded);
+    req.user = decoded;
     next();
   } catch (err) {
-    console.error("❌ Auth middleware error:", err);
-    res.status(500).json({ error: "Auth middleware error" });
+    console.error("❌ JWT error:", err.message);
+    return res
+      .status(401)
+      .json({ message: `Token tidak valid: ${err.message}` });
   }
 }

@@ -1,19 +1,22 @@
 import express from "express";
 import {
+  getAllTasks,
   getTasksByProject,
   createTask,
   updateTask,
   deleteTask,
-  getAllTasks,
 } from "../controllers/tasksController.js";
+import auth from "../middlewares/auth.js";
 
 const router = express.Router();
 
-router.get("/tasks", getAllTasks);
+// Semua route di bawah wajib login
+router.use(auth);
 
-router.get("/projects/:projectId/tasks", getTasksByProject);
-router.post("/projects/:projectId/tasks", createTask);
-router.put("/tasks/:id", updateTask); // <== ini yang dibutuhkan frontend
-router.delete("/tasks/:id", deleteTask);
+router.get("/tasks", getAllTasks); 
+router.get("/tasks/:projectId", getTasksByProject); 
+router.post("/projects/:projectId/tasks", createTask); 
+router.put("/tasks/:id", updateTask); 
+router.delete("/tasks/:id", deleteTask); 
 
 export default router;

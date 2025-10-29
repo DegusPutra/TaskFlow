@@ -8,17 +8,17 @@ const router = express.Router();
 
 // Semua route di bawah ini wajib login
 router.use(auth);
-router.get("/", projectCtrl.getProjects);
 
-// CRUD Project (user-based)
-router.post("/:projectId/tasks", taskCtrl.createTask);
-router.get("/:projectId/tasks", taskCtrl.getTasksByProject);
+// CRUD Project
+router.get("/", projectCtrl.getProjects);
+router.post("/", projectCtrl.createProject);
 router.get("/:id", projectCtrl.getProject);
 router.put("/:id", projectCtrl.updateProject);
 router.delete("/:id", projectCtrl.deleteProject);
 
-// Invite anggota project
+// Invite anggota ke project
 router.post("/:id/invite", inviteCtrl.createInvite);
+
 router.post("/:projectId/tasks", taskCtrl.createTask);
 router.get("/:projectId/tasks", taskCtrl.getTasksByProject);
 

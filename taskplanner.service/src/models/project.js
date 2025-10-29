@@ -5,7 +5,6 @@ const projectSchema = new mongoose.Schema({
   description: { type: String, default: "" },
   createdBy: { type: String, required: true },
   deadline: {type: Date, required: true},
-  username: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

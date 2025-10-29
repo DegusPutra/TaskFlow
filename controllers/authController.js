@@ -3,8 +3,16 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 // Fungsi untuk generate token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
 };
 
 // REGISTER http://localhost:5050/api/auth/register (POST)
@@ -34,7 +42,7 @@ exports.register = async (req, res) => {
       _id: user.id,
       name: user.name,
       email: user.email,
-      token: generateToken(user.id)
+      token: generateToken(user)
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -60,7 +68,7 @@ exports.login = async (req, res) => {
       _id: user.id,
       name: user.name,
       email: user.email,
-      token: generateToken(user.id)
+      token: generateToken(user)
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

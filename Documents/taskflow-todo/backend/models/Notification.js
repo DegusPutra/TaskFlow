@@ -8,6 +8,11 @@ const notificationSchema = new mongoose.Schema({
     default: "custom",
   },
   isRead: { type: Boolean, default: false },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
   metadata: { type: Object },
   createdAt: { type: Date, default: Date.now },
 });

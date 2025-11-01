@@ -6,11 +6,12 @@ export default function Dashboard() {
   const [projects, setProjects] = useState([]);
   const [activities, setActivities] = useState([]);
 
-  // === Ambil data user login dari localStorage ===
-  const username = localStorage.getItem("username") || "guest";
+  //Ambil data user login dari localStorage
+  const userData = JSON.parse(localStorage.getItem("userData"));
+  const username = userData?.name || userData?.username || "guest";
   const token = localStorage.getItem("token");
 
-  // === Helper fetch dengan token otomatis ===
+  //Helper fetch dengan token otomatis
   const apiFetch = async (url, options = {}) => {
     if (!token) throw new Error("Token tidak ditemukan. Silakan login ulang.");
 
@@ -31,7 +32,7 @@ export default function Dashboard() {
     return await res.json();
   };
 
-  // === Fetch project dari History Service ===
+  //Fetch project dari History Service
   const fetchProjects = async () => {
     try {
       const data = await apiFetch("http://localhost:3001/history");
@@ -56,31 +57,17 @@ export default function Dashboard() {
     }
   };
 
-  // === Fetch aktivitas terbaru dari Activity Service ===
+  //Fetch aktivitas terbaru dari Activity Service
   const fetchActivities = async () => {
     try {
       const data = await apiFetch("http://localhost:3001/activity");
-
-      console.log("📦 Data activities dari backend:", data);
-      console.log("👤 Username login:", username);
-
-      // ⚠️ Jika tidak yakin nama user di DB sama dengan username localStorage,
-      // tampilkan semua data dulu biar kelihatan hasilnya
       setActivities(data);
-
-      // 🔹 Kalau nanti sudah yakin user di DB == username di localStorage, aktifkan filter ini:
-      /*
-      const filteredActivities = data.filter(
-        (a) => a.user && a.user.toLowerCase() === username.toLowerCase()
-      );
-      setActivities(filteredActivities);
-      */
     } catch (err) {
       console.error("❌ Error fetch activities:", err.message);
     }
   };
 
-  // === Jalankan fetch saat halaman dibuka ===
+  //Jalankan fetch saat halaman dibuka
   useEffect(() => {
     fetchProjects();
     fetchActivities();
@@ -88,9 +75,16 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col px-8 py-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
+      {/* === SAPAAN PENGGUNA === */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Selamat datang, {username}!
+        </h1>
+        <p className="text-gray-500 mt-1">
+          Kelola proyek dan pantau aktivitasmu di TaskFlow.
+        </p>
+      </div>
 
-      {/* === HISTORY PROJECT === */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold text-gray-700 mb-4">
           History Project
@@ -107,7 +101,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* === AKTIVITAS TERBARU === */}
       <section>
         <h2 className="text-xl font-semibold text-gray-700 mb-4">
           Aktivitas Terbaru
@@ -122,7 +115,7 @@ export default function Dashboard() {
             {activities.map((a) => (
               <li
                 key={a._id || a.id}
-                className="bg-white shadow rounded-lg p-4 text-gray-700 border-l-4 border-blue-500"
+                className="bg-white shadow rounded-lg p-4 text-gray-700 border-l-4 border-blue-500 hover:shadow-md transition-all"
               >
                 <span className="font-semibold text-blue-700">
                   {a.user || username}
@@ -136,6 +129,19 @@ export default function Dashboard() {
           </ul>
         )}
       </section>
+
+      <footer className="mt-20 text-center pt-8 pb-6 text-gray-600 bg-gradient-to-r from-blue-50 to-indigo-50 border-t border-gray-200 shadow-inner">
+        <h2 className="text-lg font-semibold text-gray-800 mb-3">
+          Tentang TaskFlow
+        </h2>
+        <p className="text-sm max-w-xl mx-auto mb-4">
+          TaskFlow adalah aplikasi manajemen tugas dan proyek sederhana yang membantu kamu
+          memantau progres, aktivitas, dan deadline dengan lebih efisien.
+        </p>
+        <p className="text-xs text-gray-400">
+          © {new Date().getFullYear()} TaskFlow. Semua hak cipta dilindungi.
+        </p>
+      </footer>
     </div>
   );
 }

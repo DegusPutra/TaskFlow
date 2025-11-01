@@ -1,67 +1,75 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import axios from "axios";
+import { apiNotification } from "../api/axios";
 
 const NotificationContext = createContext();
-
 export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
+  const [token, setToken] = useState(localStorage.getItem("token")); // ✅
 
-  // 🔹 Ambil semua notifikasi dari backend
+  // Cek perubahan token dari localStorage
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentToken = localStorage.getItem("token");
+      if (currentToken !== token) {
+        setToken(currentToken); // trigger useEffect
+      }
+    }, 1000); // cek tiap 1 detik
+
+    return () => clearInterval(interval);
+  }, [token]);
+
   const fetchNotifications = async () => {
     try {
-      const res = await axios.get("http://localhost:5010/api/notifications");
+      if (!token) return;
+      const res = await apiNotification.get("/notifications");
       setNotifications(res.data);
     } catch (err) {
-      console.error("❌ Gagal ambil notifikasi:", err);
+      console.error("❌ Gagal mengambil notifikasi:", err.response?.data || err.message);
     }
   };
 
-  // 🔹 Tandai sudah dibaca
+  const clearNotifications = async () => {
+    try {
+      await apiNotification.delete("/notifications");
+      setNotifications([]);
+    } catch (err) {
+      console.error("❌ Gagal hapus semua notifikasi:", err.response?.data || err.message);
+    }
+  };
+
+  const deleteNotification = async (id) => {
+    try {
+      await apiNotification.delete(`/notifications/${id}`);
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+    } catch (err) {
+      console.error("❌ Gagal hapus notifikasi:", err.response?.data || err.message);
+    }
+  };
+
   const markAsRead = async (id) => {
     try {
-      await axios.put(`http://localhost:5010/api/notifications/${id}/read`);
+      await apiNotification.put(`/notifications/${id}/read`);
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
       );
     } catch (err) {
-      console.error("❌ Gagal tandai notifikasi:", err);
-    }
-  };
-
-  // 🔹 Hapus satu notifikasi
-  const deleteNotification = async (id) => {
-    try {
-      await axios.delete(`http://localhost:5010/api/notifications/${id}`);
-      setNotifications((prev) => prev.filter((n) => n._id !== id));
-    } catch (err) {
-      console.error("❌ Gagal hapus notifikasi:", err);
-    }
-  };
-
-  // 🔹 Hapus semua notifikasi
-  const clearNotifications = async () => {
-    try {
-      await axios.delete("http://localhost:5010/api/notifications");
-      setNotifications([]);
-    } catch (err) {
-      console.error("❌ Gagal hapus semua notifikasi:", err);
+      console.error("❌ Gagal tandai notifikasi dibaca:", err.response?.data || err.message);
     }
   };
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [token]); // ✅ ini yang penting
 
   return (
     <NotificationContext.Provider
       value={{
         notifications,
-        fetchNotifications,
-        markAsRead,
-        deleteNotification, // ✅ jangan lupa ini!
         clearNotifications,
+        deleteNotification,
+        markAsRead,
       }}
     >
       {children}

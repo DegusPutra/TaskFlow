@@ -1,26 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiAuth } from "../api/axios"; // ✅ pakai apiAuth, bukan default import
+import { apiAuth } from "../api/axios";
+import { FaUserEdit, FaSignOutAlt, FaEnvelope, FaUser } from "react-icons/fa";
+import { motion } from "framer-motion";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({
-    name: "",
-    email: "",
-    password: "",
-  });
+  const [editData, setEditData] = useState({ name: "", email: "", password: "" });
 
-  // ✅ Ambil profil user dari backend (auth service)
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) {
-          alert("Sesi login habis, silakan login ulang.");
-          return navigate("/login");
-        }
+        if (!token) return navigate("/login");
 
         const res = await apiAuth.get("/users/me", {
           headers: { Authorization: `Bearer ${token}` },
@@ -30,101 +24,105 @@ export default function ProfilePage() {
         setEditData({ name: res.data.name, email: res.data.email, password: "" });
       } catch (error) {
         console.error("Gagal ambil profil:", error);
-        alert("Sesi login habis, silakan login ulang.");
         navigate("/login");
       }
     };
     fetchProfile();
   }, [navigate]);
 
-  // ✅ Logout user
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userData");
     navigate("/login");
   };
 
-  // ✅ Update input edit profil
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ✅ Simpan profil yang diedit
   const handleSaveEdit = async () => {
     try {
       const token = localStorage.getItem("token");
       const res = await apiAuth.put("/users/me", editData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       alert("Profil berhasil diperbarui!");
       setUser(res.data);
       setIsEditing(false);
     } catch (error) {
-      console.error(error);
       alert(error.response?.data?.message || "Gagal memperbarui profil");
     }
   };
 
-  if (!user) return <p className="text-center mt-20">Memuat profil...</p>;
+  if (!user) return <p className="text-center mt-20 text-gray-500">Memuat profil...</p>;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-blue-100 p-4">
-      <div className="bg-white shadow-lg rounded-2xl p-6 sm:p-8 w-full max-w-md sm:max-w-lg text-center">
-        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6">
-          Profil Akun
-        </h2>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="backdrop-blur-md bg-white/70 shadow-2xl rounded-3xl p-8 w-full max-w-lg text-center border border-blue-100"
+      >
+        {/* Foto profil */}
+        <div className="relative w-28 h-28 mx-auto mb-4">
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/847/847969.png"
+            alt="avatar"
+            className="w-full h-full rounded-full border-4 border-blue-200 shadow-md"
+          />
+        </div>
+
+        <h2 className="text-3xl font-bold text-blue-800 mb-1">{user.name}</h2>
+        <p className="text-gray-600 mb-6">@{user.email.split("@")[0]}</p>
 
         {!isEditing ? (
           <>
-            <p className="text-lg text-gray-700 mb-2">
-              <strong>Nama:</strong> {user.name}
-            </p>
-            <p className="text-lg text-gray-700 mb-6">
-              <strong>Email:</strong> {user.email}
-            </p>
+            <div className="space-y-2 text-left bg-blue-50 rounded-xl p-4 shadow-inner mb-6">
+              <p className="flex items-center gap-3 text-gray-700">
+                <FaUser className="text-blue-600" /> <span>{user.name}</span>
+              </p>
+              <p className="flex items-center gap-3 text-gray-700">
+                <FaEnvelope className="text-blue-600" /> <span>{user.email}</span>
+              </p>
+            </div>
 
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <div className="flex justify-center gap-4">
               <button
                 onClick={() => setIsEditing(true)}
-                className="bg-blue-600 text-white font-semibold py-2 px-4 rounded hover:bg-blue-700 transition"
+                className="flex items-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-full hover:bg-blue-700 transition"
               >
-                Edit Profil
+                <FaUserEdit /> Edit
               </button>
               <button
                 onClick={handleLogout}
-                className="bg-red-600 text-white font-semibold py-2 px-4 rounded hover:bg-red-700 transition"
+                className="flex items-center gap-2 bg-red-600 text-white py-2 px-4 rounded-full hover:bg-red-700 transition"
               >
-                Logout
+                <FaSignOutAlt /> Logout
               </button>
             </div>
           </>
         ) : (
           <div className="space-y-4 text-left">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nama
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nama</label>
               <input
                 type="text"
                 name="name"
                 value={editData.name}
                 onChange={handleEditChange}
-                className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-400"
+                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
                 type="email"
                 name="email"
                 value={editData.email}
                 onChange={handleEditChange}
-                className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-400"
+                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
               />
             </div>
 
@@ -138,27 +136,27 @@ export default function ProfilePage() {
                 value={editData.password}
                 onChange={handleEditChange}
                 placeholder="Isi jika ingin mengganti password"
-                className="w-full border rounded p-2 focus:ring-2 focus:ring-blue-400"
+                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-400"
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
+            <div className="flex justify-center gap-4 mt-6">
               <button
                 onClick={handleSaveEdit}
-                className="bg-green-600 text-white font-semibold py-2 px-4 rounded hover:bg-green-700 transition"
+                className="bg-green-600 text-white py-2 px-4 rounded-full hover:bg-green-700 transition"
               >
                 Simpan
               </button>
               <button
                 onClick={() => setIsEditing(false)}
-                className="bg-gray-400 text-white font-semibold py-2 px-4 rounded hover:bg-gray-500 transition"
+                className="bg-gray-400 text-white py-2 px-4 rounded-full hover:bg-gray-500 transition"
               >
                 Batal
               </button>
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

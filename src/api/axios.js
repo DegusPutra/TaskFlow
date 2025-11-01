@@ -15,11 +15,19 @@ export const apiTodo = axios.create({
   baseURL: "http://localhost:5010/api",
 });
 
+// 🔹 Untuk Notification Service (port 5030)
+export const apiNotification = axios.create({
+  baseURL: "http://localhost:5010/api",
+});
 // 🛡️ Tambahkan token jika ada (khusus untuk taskplanner)
-apiTask.interceptors.request.use((config) => {
+const attachToken = (config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-});
+};
+
+apiTask.interceptors.request.use(attachToken);
+apiTodo.interceptors.request.use(attachToken);
+apiNotification.interceptors.request.use(attachToken);

@@ -15,7 +15,6 @@ export default function ProjectView() {
     description: "",
     deadline: "",
   });
-
   const [notification, setNotification] = useState(null);
 
   const showNotification = (message, type = "success") => {
@@ -23,7 +22,6 @@ export default function ProjectView() {
     setTimeout(() => setNotification(null), 2500);
   };
 
-  // 🔹 Ambil semua project
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -37,13 +35,11 @@ export default function ProjectView() {
     fetchProjects();
   }, []);
 
-  // 🔹 Update state form
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNewProject((prev) => ({ ...prev, [name]: value }));
   };
 
-  // 🔹 Tambah / Edit project
   const handleAddProject = async () => {
     if (
       !newProject.name.trim() ||
@@ -109,21 +105,12 @@ export default function ProjectView() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white relative p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="text-4xl font-bold text-blue-700 hover:text-blue-900 transition"
-          >
-            &lt;
-          </button>
+      <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-800 tracking-wide">
-            My Projects
+            TaskPlanner
           </h1>
         </div>
-      </div>
 
-      {/* Daftar Project */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {projects.length === 0 ? (
           <div className="col-span-full text-center text-gray-500 py-12">

@@ -1,7 +1,6 @@
 import Task from "../models/task.js";
 import axios from "axios";
 
-// GET semua task berdasarkan project
 export const getTasksByProject = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -11,6 +10,34 @@ export const getTasksByProject = async (req, res) => {
     }
 
     const tasks = await Task.find({ project: projectId }).sort({ createdAt: -1 });
+
+    const now = new Date();
+    const twoDaysLater = new Date();
+    twoDaysLater.setDate(now.getDate() + 2);
+
+    for (const t of tasks) {
+      if (t.deadline) {
+        const deadline = new Date(t.deadline);
+        if (deadline >= now && deadline <= twoDaysLater) {
+          try {
+            await axios.post(
+              "http://localhost:5010/api/notifications",
+              {
+                message: `⏰ Deadline task "${t.title}" sudah dekat!`,
+                type: "task-deadline",
+                userId: req.user.id,
+                metadata: { taskId: t._id, projectId: t.project },
+              },
+              { headers: { Authorization: req.headers.authorization } }
+            );
+            console.log(`🔔 Notifikasi deadline task "${t.title}" dikirim`);
+          } catch (notifErr) {
+            console.error("❌ Gagal kirim notifikasi deadline task:", notifErr.message);
+          }
+        }
+      }
+    }
+
     res.json(tasks);
   } catch (err) {
     console.error("❌ Error in getTasksByProject:", err.message);
@@ -18,17 +45,18 @@ export const getTasksByProject = async (req, res) => {
   }
 };
 
-// Create task baru
 export const createTask = async (req, res) => {
   try {
     const { title, deadline, project, members, status } = req.body;
-    const userId = req.user?.id || "guest";
+    if (!req.user?.id) {
+  return res.status(401).json({ message: "Unauthorized: user ID missing" });
+}
+const userId = req.user.id;
 
     if (!title || !project) {
       return res.status(400).json({ message: "Title dan project wajib diisi" });
     }
 
-    // Simpan task ke database utama
     const newTask = new Task({
       title,
       project,
@@ -40,27 +68,31 @@ export const createTask = async (req, res) => {
 
     const savedTask = await newTask.save();
 
-    // Kirim ke History Service
-    try {
-      await axios.post(
-        "http://localhost:3001/history",
-        {
-          projectId: savedTask.project,
-          name: savedTask.title,
-          description: `Task: ${savedTask.title}`,
-          deadline: savedTask.deadline,
-          createdBy: userId,
-        },
-        {
-          headers: { Authorization: req.headers.authorization },
+    if (savedTask.deadline) {
+      const now = new Date();
+      const taskDeadline = new Date(savedTask.deadline);
+      const twoDaysLater = new Date();
+      twoDaysLater.setDate(now.getDate() + 2);
+
+      if (taskDeadline >= now && taskDeadline <= twoDaysLater) {
+        try {
+          await axios.post(
+            "http://localhost:5010/api/notifications",
+            {
+              message: `⏰ Deadline task "${savedTask.title}" sudah dekat!`,
+              type: "task-deadline",
+              userId: userId,
+              metadata: { taskId: savedTask._id, projectId: savedTask.project },
+            },
+            { headers: { Authorization: req.headers.authorization } }
+          );
+          console.log("✅ Notifikasi deadline task dikirim");
+        } catch (err) {
+          console.error("❌ Gagal kirim notifikasi deadline:", err.message);
         }
-      );
-      console.log("✅ Task History created successfully");
-    } catch (err) {
-      console.error("❌ Failed to create task history:", err.response?.data || err.message);
+      }
     }
 
-    // Kirim ke Activity Service
     try {
       await axios.post(
         "http://localhost:3001/activity",
@@ -69,13 +101,11 @@ export const createTask = async (req, res) => {
           action: `menambahkan task baru "${savedTask.title}"`,
           projectId: savedTask.project,
         },
-        {
-          headers: { Authorization: req.headers.authorization },
-        }
+        { headers: { Authorization: req.headers.authorization } }
       );
       console.log("📝 Task Activity log created");
     } catch (err) {
-      console.error("❌ Failed to create task activity:", err.response?.data || err.message);
+      console.error("❌ Failed to create task activity:", err.message);
     }
 
     res.status(201).json(savedTask);
@@ -85,7 +115,6 @@ export const createTask = async (req, res) => {
   }
 };
 
-// Update task
 export const updateTask = async (req, res) => {
   try {
     const { title, deadline, status, members } = req.body;
@@ -107,25 +136,31 @@ export const updateTask = async (req, res) => {
       return res.status(404).json({ message: "Task not found" });
     }
 
-    // Sync ke History Service
-    try {
-      await axios.put(
-        `http://localhost:3001/history/${updatedTask.project}`,
-        {
-          name: updatedTask.title,
-          description: `Task diperbarui: ${updatedTask.title}`,
-          deadline: updatedTask.deadline,
-        },
-        {
-          headers: { Authorization: req.headers.authorization },
-        }
-      );
-      console.log("✅ Task History updated");
-    } catch (err) {
-      console.error("❌ Failed to update task history:", err.response?.data || err.message);
-    }
+    if (updatedTask.deadline) {
+      const now = new Date();
+      const taskDeadline = new Date(updatedTask.deadline);
+      const twoDaysLater = new Date();
+      twoDaysLater.setDate(now.getDate() + 2);
 
-    // Tambahkan log ke Activity Service
+      if (taskDeadline >= now && taskDeadline <= twoDaysLater) {
+        try {
+          await axios.post(
+            "http://localhost:5010/api/notifications",
+            {
+              message: `⏰ Deadline task "${updatedTask.title}" sudah dekat!`,
+              type: "task-deadline",
+              userId: userId,
+              metadata: { taskId: updatedTask._id, projectId: updatedTask.project },
+            },
+            { headers: { Authorization: req.headers.authorization } }
+          );
+          console.log("🔔 Notifikasi update deadline task dikirim");
+        } catch (err) {
+          console.error("❌ Gagal kirim notifikasi update deadline:", err.message);
+        }
+      }
+    }
+    
     try {
       await axios.post(
         "http://localhost:3001/activity",
@@ -134,13 +169,11 @@ export const updateTask = async (req, res) => {
           action: `mengupdate task "${updatedTask.title}"`,
           projectId: updatedTask.project,
         },
-        {
-          headers: { Authorization: req.headers.authorization },
-        }
+        { headers: { Authorization: req.headers.authorization } }
       );
       console.log("📝 Task Activity updated");
     } catch (err) {
-      console.error("❌ Failed to update task activity:", err.response?.data || err.message);
+      console.error("❌ Failed to log task update:", err.message);
     }
 
     res.status(200).json(updatedTask);
@@ -150,7 +183,6 @@ export const updateTask = async (req, res) => {
   }
 };
 
-// Delete task
 export const deleteTask = async (req, res) => {
   try {
     const { id } = req.params;
@@ -163,17 +195,22 @@ export const deleteTask = async (req, res) => {
     const deleted = await Task.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ message: "Task not found" });
 
-    // 🔁 Hapus dari History Service
     try {
-      await axios.delete(`http://localhost:3001/history/${deleted.project}`, {
-        headers: { Authorization: req.headers.authorization },
-      });
-      console.log("🗑️ Task History deleted");
+      await axios.post(
+        "http://localhost:5010/api/notifications",
+        {
+          message: `🗑️ Task "${deleted.title}" telah dihapus.`,
+          type: "task-delete",
+          userId: userId,
+          metadata: { taskId: deleted._id, projectId: deleted.project },
+        },
+        { headers: { Authorization: req.headers.authorization } }
+      );
+      console.log("✅ Notifikasi task dihapus dikirim");
     } catch (err) {
-      console.error("❌ Failed to delete task history:", err.response?.data || err.message);
+      console.error("❌ Gagal kirim notifikasi delete task:", err.message);
     }
 
-    // Log ke Activity Service
     try {
       await axios.post(
         "http://localhost:3001/activity",
@@ -182,13 +219,11 @@ export const deleteTask = async (req, res) => {
           action: `menghapus task "${deleted.title}"`,
           projectId: deleted.project,
         },
-        {
-          headers: { Authorization: req.headers.authorization },
-        }
+        { headers: { Authorization: req.headers.authorization } }
       );
-      console.log("📝 Task Activity deleted");
+      console.log("📝 Task Activity delete logged");
     } catch (err) {
-      console.error("❌ Failed to log task delete:", err.response?.data || err.message);
+      console.error("❌ Failed to log delete task:", err.message);
     }
 
     res.json({ message: "Task deleted successfully" });
@@ -198,7 +233,6 @@ export const deleteTask = async (req, res) => {
   }
 };
 
-// GET semua task 
 export const getAllTasks = async (req, res) => {
   try {
     const tasks = await Task.find().sort({ createdAt: -1 });

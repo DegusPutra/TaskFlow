@@ -1,10 +1,41 @@
 import Project from "../models/project.js";
 import axios from "axios";
 
-// GET semua project milik user
 export const getProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ createdBy: req.user.id });
+    const userId = req.user.id;
+    const projects = await Project.find({ createdBy: userId });
+
+    const now = new Date();
+    const twoDaysLater = new Date();
+    twoDaysLater.setDate(now.getDate() + 2);
+
+    for (const p of projects) {
+      if (p.deadline) {
+        const deadline = new Date(p.deadline);
+        if (deadline >= now && deadline <= twoDaysLater) {
+          try {
+            await axios.post(
+              "http://localhost:5010/api/notifications",
+              {
+                message: `⏰ Deadline proyek "${p.name}" sudah dekat!`,
+                type: "deadline",
+                userId: userId,
+                metadata: { projectId: p._id },
+              },
+              {
+                headers: {
+                  Authorization: req.headers.authorization,
+                },
+              }
+            );
+          } catch (notifErr) {
+            console.error("❌ Gagal kirim notifikasi deadline:", notifErr.message);
+          }
+        }
+      }
+    }
+
     res.json(projects);
   } catch (err) {
     console.error("❌ Error getProjects:", err);
@@ -12,7 +43,7 @@ export const getProjects = async (req, res) => {
   }
 };
 
-// Create project baru
+
 export const createProject = async (req, res) => {
   try {
     console.log("📥 Request body:", req.body);
@@ -20,7 +51,7 @@ export const createProject = async (req, res) => {
 
     const { title, name, description, deadline } = req.body;
     const projectName = title || name;
-    const userId = req.user?.id || "guest";
+    const userId = req.user?.id;
 
     if (!projectName || !description) {
       return res.status(400).json({
@@ -28,6 +59,7 @@ export const createProject = async (req, res) => {
       });
     }
 
+    // Simpan project baru
     const project = new Project({
       name: projectName,
       description,
@@ -36,6 +68,24 @@ export const createProject = async (req, res) => {
     });
 
     const savedProject = await project.save();
+
+    //Kirim notifikasi ke Notification Service
+    try {
+await axios.post(
+  "http://localhost:5010/api/notifications",
+  {
+    message: `📢 Proyek baru "${savedProject.name}" berhasil dibuat.`,
+    type: "new-task",
+    userId: savedProject.createdBy,
+    metadata: { projectId: savedProject._id },
+  },
+  { headers: { Authorization: req.headers.authorization } }
+);
+
+      console.log("✅ Notifikasi proyek baru dikirim");
+    } catch (err) {
+      console.error("❌ Gagal kirim notifikasi proyek baru:", err.message);
+    }
 
     // Kirim ke History Service
     try {
@@ -48,9 +98,7 @@ export const createProject = async (req, res) => {
           deadline: savedProject.deadline,
           createdBy: savedProject.createdBy,
         },
-        {
-          headers: { Authorization: req.headers.authorization },
-        }
+        { headers: { Authorization: req.headers.authorization } }
       );
       console.log("✅ History created successfully");
     } catch (err) {
@@ -65,9 +113,7 @@ export const createProject = async (req, res) => {
           action: `membuat proyek baru "${savedProject.name}"`,
           projectId: savedProject._id,
         },
-        {
-          headers: { Authorization: req.headers.authorization },
-        }
+        { headers: { Authorization: req.headers.authorization } }
       );
       console.log("📝 Activity log created");
     } catch (err) {
@@ -81,7 +127,6 @@ export const createProject = async (req, res) => {
   }
 };
 
-// GET satu project berdasarkan ID
 export const getProject = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
@@ -93,7 +138,6 @@ export const getProject = async (req, res) => {
   }
 };
 
-// Update Project
 export const updateProject = async (req, res) => {
   try {
     console.log("✏️ Update Project Request:", req.body);
@@ -102,7 +146,6 @@ export const updateProject = async (req, res) => {
     const { title, name, description, deadline } = req.body;
     const projectName = title || name;
 
-    // Update data project di MongoDB utama
     const project = await Project.findByIdAndUpdate(
       req.params.id,
       {
@@ -118,7 +161,24 @@ export const updateProject = async (req, res) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // Sync ke History Service
+    try {
+      await axios.post(
+  "http://localhost:5010/api/notifications",
+  {
+    userId: req.user.id,
+    message: `🗑️ Proyek "${project.name}" telah dihapus.`,
+    type: "custom",
+    metadata: { projectId: project._id },
+  },
+  { headers: { Authorization: req.headers.authorization } }
+);
+
+      console.log("✅ Notifikasi update proyek dikirim");
+    } catch (err) {
+      console.error("❌ Gagal kirim notifikasi update:", err.message);
+    }
+
+    // Update History Service
     try {
       await axios.put(
         `http://localhost:3001/history/${project._id}`,
@@ -127,9 +187,7 @@ export const updateProject = async (req, res) => {
           description: project.description,
           deadline: project.deadline,
         },
-        {
-          headers: { Authorization: req.headers.authorization },
-        }
+        { headers: { Authorization: req.headers.authorization } }
       );
       console.log("✅ History updated successfully");
     } catch (err) {
@@ -144,9 +202,7 @@ export const updateProject = async (req, res) => {
           action: `mengupdate proyek "${project.name}"`,
           projectId: project._id,
         },
-        {
-          headers: { Authorization: req.headers.authorization },
-        }
+        { headers: { Authorization: req.headers.authorization } }
       );
       console.log("📝 Activity log updated");
     } catch (err) {
@@ -160,12 +216,30 @@ export const updateProject = async (req, res) => {
   }
 };
 
-// Delete Project
+// DELETE PROJECT
 export const deleteProject = async (req, res) => {
   try {
     const project = await Project.findByIdAndDelete(req.params.id);
     if (!project) return res.status(404).json({ error: "Project not found" });
 
+    // Kirim notifikasi delete 
+    try {
+     await axios.post(
+  "http://localhost:5010/api/notifications",
+  {
+    userId: req.user.id, // ✅ TAMBAH INI
+    message: `🗑️ Proyek "${project.name}" telah dihapus.`,
+    type: "custom",
+    metadata: { projectId: project._id },
+  },
+  { headers: { Authorization: req.headers.authorization } }
+);
+
+      console.log("✅ Notifikasi penghapusan proyek dikirim");
+    } catch (err) {
+      console.error("❌ Gagal kirim notifikasi hapus:", err.message);
+    }
+    
     // Hapus dari History Service
     try {
       await axios.delete(`http://localhost:3001/history/${project._id}`);
@@ -174,7 +248,7 @@ export const deleteProject = async (req, res) => {
       console.error("❌ Gagal hapus history:", err.message);
     }
 
-    // Log ke Activity Service
+    // Kirim ke Activity Service
     try {
       await axios.post(
         "http://localhost:3001/activity",
@@ -182,9 +256,7 @@ export const deleteProject = async (req, res) => {
           action: `menghapus proyek "${project.name}"`,
           projectId: project._id,
         },
-        {
-          headers: { Authorization: req.headers.authorization },
-        }
+        { headers: { Authorization: req.headers.authorization } }
       );
       console.log("📝 Activity log deleted project");
     } catch (err) {

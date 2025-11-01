@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import historyRoutes from "./routes/historyRoutes.js"; // pastikan ada .js
 import activityRoutes from "./routes/activityRoutes.js";
+import auth from "./middlewares/auth.js";
 
 dotenv.config();
 
@@ -23,8 +24,9 @@ mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/history", {
 .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // Routes
+app.use(auth);
 app.use("/history", historyRoutes);
-app.use(activityRoutes);
+app.use("/activity", activityRoutes);
 // Jalankan server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

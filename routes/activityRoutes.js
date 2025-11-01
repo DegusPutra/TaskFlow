@@ -3,7 +3,7 @@ import { createActivity, getRecentActivities } from "../controllers/activityCont
 
 const router = express.Router();
 
-router.post("/activity", createActivity);
-router.get("/activity", getRecentActivities);
+router.post("/", createActivity);
+router.get("/", getRecentActivities);
 
 export default router;

@@ -29,7 +29,11 @@ export const createHistory = async (req, res) => {
 // === GET: Ambil semua history dari collection ===
 export const getHistory = async (req, res) => {
   try {
-    const histories = await History.find().sort({ createdAt: -1 });
+    const userId = req.user?.id; // ambil id dari JWT
+
+    const filter = userId ? { createdBy: userId } : {};
+    const histories = await History.find(filter).sort({ createdAt: -1 });
+
     res.json(histories);
   } catch (err) {
     console.error("❌ Error getHistory:", err);
@@ -37,10 +41,11 @@ export const getHistory = async (req, res) => {
   }
 };
 
+
 // === GET: Ambil project history berdasarkan userId (via service) ===
 export const getProjectHistory = async (req, res) => {
   try {
-    const userId = req.user?.id || req.query.userId;
+    const userId = req.user?.id; // sudah otomatis dari token JWT
     const projects = await getProjectHistoryService(userId);
     res.json(projects);
   } catch (err) {

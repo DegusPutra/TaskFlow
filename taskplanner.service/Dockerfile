@@ -1,11 +1,12 @@
-FROM node:20-alpine
-
+FROM node:18
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm isntall
+
+RUN npm install -g nodemon
 
 COPY . .
 
@@ -13,4 +14,4 @@ ENV PORT=5005
 
 EXPOSE 5005
 
-CMD ["npm", "start"]
+CMD ["npm", "run", "dev"]

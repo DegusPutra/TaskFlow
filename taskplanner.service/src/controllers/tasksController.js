@@ -1,6 +1,9 @@
 import Task from "../models/task.js";
 import axios from "axios";
 
+const NOTIFICATION_HOST = "http://degus-service:5010"; 
+const ACTIVITY_HOST = "http://pras-service:3001"; 
+
 export const getTasksByProject = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -21,7 +24,7 @@ export const getTasksByProject = async (req, res) => {
         if (deadline >= now && deadline <= twoDaysLater) {
           try {
             await axios.post(
-              "http://localhost:5010/api/notifications",
+              `${NOTIFICATION_HOST}/api/notifications`, 
               {
                 message: `⏰ Deadline task "${t.title}" sudah dekat!`,
                 type: "task-deadline",
@@ -49,9 +52,9 @@ export const createTask = async (req, res) => {
   try {
     const { title, deadline, project, members, status } = req.body;
     if (!req.user?.id) {
-  return res.status(401).json({ message: "Unauthorized: user ID missing" });
-}
-const userId = req.user.id;
+      return res.status(401).json({ message: "Unauthorized: user ID missing" });
+    }
+    const userId = req.user.id;
 
     if (!title || !project) {
       return res.status(400).json({ message: "Title dan project wajib diisi" });
@@ -77,7 +80,7 @@ const userId = req.user.id;
       if (taskDeadline >= now && taskDeadline <= twoDaysLater) {
         try {
           await axios.post(
-            "http://localhost:5010/api/notifications",
+            `${NOTIFICATION_HOST}/api/notifications`, 
             {
               message: `⏰ Deadline task "${savedTask.title}" sudah dekat!`,
               type: "task-deadline",
@@ -95,7 +98,7 @@ const userId = req.user.id;
 
     try {
       await axios.post(
-        "http://localhost:3001/activity",
+        `${ACTIVITY_HOST}/activity`, 
         {
           user: userId,
           action: `menambahkan task baru "${savedTask.title}"`,
@@ -145,7 +148,7 @@ export const updateTask = async (req, res) => {
       if (taskDeadline >= now && taskDeadline <= twoDaysLater) {
         try {
           await axios.post(
-            "http://localhost:5010/api/notifications",
+            `${NOTIFICATION_HOST}/api/notifications`, 
             {
               message: `⏰ Deadline task "${updatedTask.title}" sudah dekat!`,
               type: "task-deadline",
@@ -163,7 +166,7 @@ export const updateTask = async (req, res) => {
     
     try {
       await axios.post(
-        "http://localhost:3001/activity",
+        `${ACTIVITY_HOST}/activity`, 
         {
           user: userId,
           action: `mengupdate task "${updatedTask.title}"`,
@@ -197,7 +200,7 @@ export const deleteTask = async (req, res) => {
 
     try {
       await axios.post(
-        "http://localhost:5010/api/notifications",
+        `${NOTIFICATION_HOST}/api/notifications`, 
         {
           message: `🗑️ Task "${deleted.title}" telah dihapus.`,
           type: "task-delete",
@@ -213,7 +216,7 @@ export const deleteTask = async (req, res) => {
 
     try {
       await axios.post(
-        "http://localhost:3001/activity",
+        `${ACTIVITY_HOST}/activity`, 
         {
           user: userId,
           action: `menghapus task "${deleted.title}"`,

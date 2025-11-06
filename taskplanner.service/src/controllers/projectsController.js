@@ -1,6 +1,10 @@
 import Project from "../models/project.js";
 import axios from "axios";
 
+const NOTIFICATION_HOST = "http://degus-service:5010"; 
+const ACTIVITY_HOST = "http://pras-service:3001"; 
+const HISTORY_HOST = "http://pras-service:3001"; 
+
 export const getProjects = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -16,7 +20,7 @@ export const getProjects = async (req, res) => {
         if (deadline >= now && deadline <= twoDaysLater) {
           try {
             await axios.post(
-              "http://localhost:5010/api/notifications",
+              `${NOTIFICATION_HOST}/api/notifications`, // FIX: Gunakan NOTIFICATION_HOST
               {
                 message: `⏰ Deadline proyek "${p.name}" sudah dekat!`,
                 type: "deadline",
@@ -43,7 +47,6 @@ export const getProjects = async (req, res) => {
   }
 };
 
-
 export const createProject = async (req, res) => {
   try {
     console.log("📥 Request body:", req.body);
@@ -59,7 +62,6 @@ export const createProject = async (req, res) => {
       });
     }
 
-    // Simpan project baru
     const project = new Project({
       name: projectName,
       description,
@@ -69,28 +71,26 @@ export const createProject = async (req, res) => {
 
     const savedProject = await project.save();
 
-    //Kirim notifikasi ke Notification Service
     try {
-await axios.post(
-  "http://localhost:5010/api/notifications",
-  {
-    message: `📢 Proyek baru "${savedProject.name}" berhasil dibuat.`,
-    type: "new-task",
-    userId: savedProject.createdBy,
-    metadata: { projectId: savedProject._id },
-  },
-  { headers: { Authorization: req.headers.authorization } }
-);
+      await axios.post(
+        `${NOTIFICATION_HOST}/api/notifications`, 
+        {
+          message: `📢 Proyek baru "${savedProject.name}" berhasil dibuat.`,
+          type: "new-task",
+          userId: savedProject.createdBy,
+          metadata: { projectId: savedProject._id },
+        },
+        { headers: { Authorization: req.headers.authorization } }
+      );
 
       console.log("✅ Notifikasi proyek baru dikirim");
     } catch (err) {
       console.error("❌ Gagal kirim notifikasi proyek baru:", err.message);
     }
 
-    // Kirim ke History Service
     try {
       await axios.post(
-        "http://localhost:3001/history",
+        `${HISTORY_HOST}/history`, 
         {
           projectId: savedProject._id,
           name: savedProject.name,
@@ -105,10 +105,9 @@ await axios.post(
       console.error("❌ Failed to create history:", err.message);
     }
 
-    // Kirim ke Activity Service
     try {
       await axios.post(
-        "http://localhost:3001/activity",
+        `${ACTIVITY_HOST}/activity`, 
         {
           action: `membuat proyek baru "${savedProject.name}"`,
           projectId: savedProject._id,
@@ -163,25 +162,24 @@ export const updateProject = async (req, res) => {
 
     try {
       await axios.post(
-  "http://localhost:5010/api/notifications",
-  {
-    userId: req.user.id,
-    message: `🗑️ Proyek "${project.name}" telah dihapus.`,
-    type: "custom",
-    metadata: { projectId: project._id },
-  },
-  { headers: { Authorization: req.headers.authorization } }
-);
+        `${NOTIFICATION_HOST}/api/notifications`, 
+        {
+          userId: req.user.id,
+          message: `🗑️ Proyek "${project.name}" telah dihapus.`,
+          type: "custom",
+          metadata: { projectId: project._id },
+        },
+        { headers: { Authorization: req.headers.authorization } }
+      );
 
       console.log("✅ Notifikasi update proyek dikirim");
     } catch (err) {
       console.error("❌ Gagal kirim notifikasi update:", err.message);
     }
 
-    // Update History Service
     try {
       await axios.put(
-        `http://localhost:3001/history/${project._id}`,
+        `${HISTORY_HOST}/history/${project._id}`, 
         {
           name: project.name,
           description: project.description,
@@ -194,10 +192,9 @@ export const updateProject = async (req, res) => {
       console.error("❌ Gagal update history:", err.response?.data || err.message);
     }
 
-    // Kirim ke Activity Service
     try {
       await axios.post(
-        "http://localhost:3001/activity",
+        `${ACTIVITY_HOST}/activity`, 
         {
           action: `mengupdate proyek "${project.name}"`,
           projectId: project._id,
@@ -216,42 +213,38 @@ export const updateProject = async (req, res) => {
   }
 };
 
-// DELETE PROJECT
 export const deleteProject = async (req, res) => {
   try {
     const project = await Project.findByIdAndDelete(req.params.id);
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    // Kirim notifikasi delete 
     try {
-     await axios.post(
-  "http://localhost:5010/api/notifications",
-  {
-    userId: req.user.id, // ✅ TAMBAH INI
-    message: `🗑️ Proyek "${project.name}" telah dihapus.`,
-    type: "custom",
-    metadata: { projectId: project._id },
-  },
-  { headers: { Authorization: req.headers.authorization } }
-);
+      await axios.post(
+        `${NOTIFICATION_HOST}/api/notifications`, 
+        {
+          userId: req.user.id, 
+          message: `🗑️ Proyek "${project.name}" telah dihapus.`,
+          type: "custom",
+          metadata: { projectId: project._id },
+        },
+        { headers: { Authorization: req.headers.authorization } }
+      );
 
       console.log("✅ Notifikasi penghapusan proyek dikirim");
     } catch (err) {
       console.error("❌ Gagal kirim notifikasi hapus:", err.message);
     }
     
-    // Hapus dari History Service
     try {
-      await axios.delete(`http://localhost:3001/history/${project._id}`);
+      await axios.delete(`${HISTORY_HOST}/history/${project._id}`); 
       console.log("🗑️ History deleted");
     } catch (err) {
       console.error("❌ Gagal hapus history:", err.message);
     }
 
-    // Kirim ke Activity Service
     try {
       await axios.post(
-        "http://localhost:3001/activity",
+        `${ACTIVITY_HOST}/activity`, 
         {
           action: `menghapus proyek "${project.name}"`,
           projectId: project._id,

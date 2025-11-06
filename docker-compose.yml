@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  # MongoDB
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # Surya Auth Service
+  surya-auth-service:
+    build: ./surya-auth
+    container_name: surya-service
+    restart: always
+    ports:
+      - "5050:5050"
+    env_file:
+      - ./surya-auth/.env
+    depends_on:
+      - mongo
+
+  # Sintya Backend
+  sintya-service:
+    build: ./sintya-taskplanner/taskplanner.service
+    container_name: sintya-service
+    restart: always
+    ports:
+      - "5005:5005"
+    env_file:
+      - ./sintya-taskplanner/taskplanner.service/.env
+    depends_on:
+      - mongo
+
+  # Pras Dashboard Service
+  pras-service:
+    build: ./pras-dashboard
+    container_name: pras-service
+    restart: always
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./pras-dashboard/.env
+    depends_on:
+      - mongo
+
+  # Degus Todo Service
+  degus-service:
+    build: ./degus-todo/Documents/taskflow-todo/backend
+    container_name: degus-service
+    restart: always
+    ports:
+      - "5010:5010"
+    env_file:
+      - ./degus-todo/Documents/taskflow-todo/backend/.env
+    depends_on:
+      - mongo
+
+  # Sindy Frontend
+  sindy-frontend:
+    build: ./sindy-frontend
+    container_name: sindy-frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./sindy-frontend/.env
+    depends_on:
+      - surya-auth-service
+      - sintya-service
+      - pras-service
+      - degus-service
+
+volumes:
+  mongo_data:

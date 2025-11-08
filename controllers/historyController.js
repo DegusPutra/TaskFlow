@@ -4,6 +4,10 @@ import { getProjectHistoryService } from "../services/historyService.js";
 // === POST: Tambah data history baru ===
 export const createHistory = async (req, res) => {
   try {
+    // START LOG VERIFIKASI PENERIMAAN
+    console.log("📜 PRAS RECEIVE: History request received:", req.body); 
+    // END LOG VERIFIKASI PENERIMAAN
+
     const { projectId, name, description, deadline, createdBy } = req.body;
 
     if (!projectId || !name || !createdBy) {
@@ -29,7 +33,11 @@ export const createHistory = async (req, res) => {
 // === GET: Ambil semua history dari collection ===
 export const getHistory = async (req, res) => {
   try {
-    const histories = await History.find().sort({ createdAt: -1 });
+    const userId = req.user?.id; // ambil id dari JWT
+
+    const filter = userId ? { createdBy: userId } : {};
+    const histories = await History.find(filter).sort({ createdAt: -1 });
+
     res.json(histories);
   } catch (err) {
     console.error("❌ Error getHistory:", err);
@@ -40,7 +48,7 @@ export const getHistory = async (req, res) => {
 // === GET: Ambil project history berdasarkan userId (via service) ===
 export const getProjectHistory = async (req, res) => {
   try {
-    const userId = req.user?.id || req.query.userId;
+    const userId = req.user?.id; // sudah otomatis dari token JWT
     const projects = await getProjectHistoryService(userId);
     res.json(projects);
   } catch (err) {
@@ -49,6 +57,7 @@ export const getProjectHistory = async (req, res) => {
   }
 };
 
+// === PUT: Update data history berdasarkan projectId ===
 export const updateHistory = async (req, res) => {
   try {
     const { id } = req.params; // id di sini adalah projectId
@@ -73,6 +82,7 @@ export const updateHistory = async (req, res) => {
   }
 };
 
+// === DELETE: Hapus history berdasarkan projectId ===
 export const deleteHistory = async (req, res) => {
   try {
     const { id } = req.params;

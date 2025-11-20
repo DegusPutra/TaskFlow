@@ -17,7 +17,7 @@ Proyek ini terdiri dari 6 container utama:
 5. **Todo Service** "Sistem todo list dan notifikasi"
 6. **Frontend** "Antarmuka aplikasi TaskFlow"
 
-(Semua service berjalan independen, saling terhubung hanya melalui API, dan berbagi data)
+Semua service berjalan independen, saling terhubung hanya melalui API, dan berbagi data
 
 ## Cara Menjalankan
 1. Membangun dan menjalankan semua container menggunakan "docker compose up --build"
@@ -28,4 +28,5 @@ Proyek ini terdiri dari 6 container utama:
    4. Todo Service: http://localhost:5010
    5. Dashboard Service: http://localhost:3001
    6. MongoDB: port 27017
-(Semua service otomatis terhubung satu sama lain melalui docker network)
+
+Semua service otomatis terhubung satu sama lain melalui docker network

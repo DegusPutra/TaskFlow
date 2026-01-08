@@ -2,14 +2,20 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
+  authUid: {
+    type: String,
+    required: true,
+    unique: true
+  },
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true }
 });
 
-// *****************************************************************
-// ** BAGIAN INI DIHAPUS karena hashing sudah dilakukan di controller **
-// *****************************************************************
+
+// ***********************
+// * BAGIAN INI DIHAPUS karena hashing sudah dilakukan di controller *
+// ***********************
 /*
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();

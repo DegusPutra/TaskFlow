@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskplanner-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: taskplanner
+  template:
+    metadata:
+      labels:
+        app: taskplanner
+    spec:
+      containers:
+        - name: taskplanner
+          image: sintya-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5005
+          envFrom:
+            - configMapRef:
+                name: mongo-config
+            - secretRef:
+                name: mongo-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskplanner-service
+spec:
+  selector:
+    app: taskplanner
+  ports:
+    - port: 5005
+      targetPort: 5005
